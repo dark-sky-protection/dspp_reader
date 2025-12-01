@@ -1,0 +1,70 @@
+[build-system]
+requires = ["setuptools>=64", "setuptools_scm>=8"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dspp_reader"
+dynamic = ["version"]
+description = "Software for reading SQMs and TESS-W4C devices, used for measuring sky brightness."
+readme = "README.md"
+requires-python = ">=3.13"
+license = {file = "LICENSE"}
+keywords = [
+  "sqm",
+  "sqm-le",
+  "tess-4c",
+  "sky",
+  "darkness",
+  "astronomy",
+]
+
+authors = [
+  {name = "Simón Torres", email = "simon.torres@noirlab.edu"},
+  {name = "Guillermo Damke", email = "guillermo.damke@noirlab.edu"},
+
+]
+maintainers = [
+  {name = "Simón Torres", email = "simon.torres@noirlab.edu"}
+]
+
+classifiers = [
+  'Development Status :: 2 - Pre-Alpha',
+  'Environment :: Console',
+  'Intended Audience :: Developers',
+  'Intended Audience :: Education',
+  'Intended Audience :: Science/Research',
+  'License :: OSI Approved :: BSD License',
+  'Programming Language :: Python :: 3.12',
+  'Natural Language :: English',
+  'Operating System :: POSIX :: Linux',
+  'Operating System :: POSIX :: Other',
+  'Operating System :: MacOS :: MacOS X',
+  'Topic :: Scientific/Engineering :: Astronomy',
+  'Topic :: Software Development :: Libraries :: Python Modules',
+]
+
+dependencies = [
+  "packaging",
+  "requests",
+]
+
+[project.urls]
+"Homepage" = "https://noirlab.edu"
+"Bug Reports" = "https://noirlab.edu"
+"Source" = "https://noirlab.edu"
+
+[project.scripts]
+#read_sqm = "goodman_pipeline.scripts:redccd"
+read_tess = "dspp_reader.tessw4c.script:script"
+
+
+[tool.setuptools]
+packages = [
+  "dspp_reader",
+  "dspp_reader.sqm",
+  "dspp_reader.tessw4c",
+]
+
+
+[tool.setuptools_scm]
+version_file = "dspp_reader/version.py"
