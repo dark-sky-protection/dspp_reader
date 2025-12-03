@@ -12,8 +12,7 @@ from pathlib import Path
 from pytz import timezone as tz
 
 from dspp_reader.tools import Site, Device
-
-logging.basicConfig(level=logging.INFO)
+from dspp_reader.tools.generics import get_filename
 
 logger = logging.getLogger(__name__)
 
@@ -60,7 +59,7 @@ class TESSW4C(object):
         self.post_to_api = post_to_api
         self.save_files_to = Path(save_files_to)
         self.timestamp = datetime.datetime.now(datetime.UTC)
-
+        self.logger_level = logger.getEffectiveLevel()
         self.separator = ' '
         self.format = file_format
         if self.format == 'tsv':
@@ -139,11 +138,17 @@ class TESSW4C(object):
                         try:
                             if self.tcp_socket:
                                 self.tcp_socket.recv(1024)
-                            print(f"\rWaiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next "
-                              f"sunset {next_sunset.to_datetime(timezone=tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} ",
-                              end="", flush=True)
+                            message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_sunset.to_datetime(timezone=tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
+                            if self.logger_level == logging.DEBUG:
+                                logger.debug(message)
+                            else:
+                                print(f"\r{message}", end="", flush=True)
                         except OSError as e:
-                            print(f"\033[2K\rSocket error: {e}. The device may be unavailable.")
+                            error_message = f"Socket error: {e}. The device may be unavailable."
+                            if self.logger_level == logging.DEBUG:
+                                logger.debug(error_message)
+                            else:
+                                print(f"\033[2K\r{error_message}", end="", flush=True)
 
                         continue
                 else:
@@ -165,7 +170,11 @@ class TESSW4C(object):
                         parsed_data = json.loads(data.decode('utf-8'))
                         message_id = parsed_data['udp']
                         if message_id != last_message_id:
-                            print(f"\rLast data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}", end="", flush=True)
+                            message = f"Last data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}"
+                            if self.logger_level == logging.DEBUG:
+                                logger.debug(message)
+                            else:
+                                print(f"\r{message}", end="", flush=True)
                             last_message_id = message_id
                         else:
                             logger.debug(f"Message skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} ")
@@ -205,13 +214,7 @@ class TESSW4C(object):
                 data['latitude'] = device.site.latitude.value
                 data['longitude'] = device.site.longitude.value
                 data['elevation'] = device.site.elevation.value
-
         return data
-
-    def __get_filename(self, device_name, device_type):
-
-        date = datetime.datetime.now().strftime("%Y%m%d")
-        return self.save_files_to / f"{date}_{device_type}_{device_name}.{self.format}"
 
     def __get_header(self, data, filename):
         columns = []
@@ -234,7 +237,11 @@ class TESSW4C(object):
         return f"{self.separator.join(fields)}\n"
 
     def _write_to_file(self, data):
-        filename = self.__get_filename(device_name=data['name'], device_type=data['type'] if 'type' in data else self.device_type)
+        filename = get_filename(
+            save_files_to=self.save_files_to,
+            device_name=data['name'],
+            device_type=data['type'] if 'type' in data else self.device_type,
+            file_format=self.format)
         if not os.path.exists(filename):
             header = self.__get_header(data=data, filename=filename)
             with open(filename, 'w') as f:
