@@ -43,8 +43,15 @@ classifiers = [
 ]
 
 dependencies = [
-  "packaging",
-  "requests",
+    "astropy",
+    "astroplan",
+    "packaging",
+    "requests",
+    "sphinx",
+    "sphinxcontrib-napoleon",
+    "pydata-sphinx-theme",
+    "pyyaml",
+    "tzlocal"
 ]
 
 [project.urls]
