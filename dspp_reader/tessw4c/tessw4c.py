@@ -19,21 +19,21 @@ logger = logging.getLogger(__name__)
 class TESSW4C(object):
 
     def __init__(self,
-                 use_udp: bool = False,
-                 udp_bind_ip: str='0.0.0.0',
-                 udp_port: int =2255,
-                 device_type: str = 'tessw4c',
-                 device_id: str = '',
-                 device_altitude: int = 0,
-                 device_azimuth: int = 0,
-                 device_tcp_ip: str='0.0.0.0',
-                 device_port: int =23,
                  site_id: str = '',
                  site_name: str = '',
                  site_timezone: str = '',
                  site_latitude: str = '',
                  site_longitude: str = '',
                  site_elevation: str = '',
+                 device_type: str = 'tessw4c',
+                 device_id: str = '',
+                 device_altitude: int = 0,
+                 device_azimuth: int = 0,
+                 device_ip: str = '0.0.0.0',
+                 device_port: int = 23,
+                 use_udp: bool = False,
+                 udp_bind_ip: str='0.0.0.0',
+                 udp_port: int =2255,
                  save_to_file: bool=True,
                  save_to_database: bool=False,
                  post_to_api: bool=False,
@@ -46,7 +46,7 @@ class TESSW4C(object):
         self.device_id = device_id
         self.device_altitude = device_altitude
         self.device_azimuth = device_azimuth
-        self.device_tcp_ip = device_tcp_ip
+        self.device_ip = device_ip
         self.device_port = device_port
         self.site_id = site_id
         self.site_name = site_name
@@ -61,12 +61,12 @@ class TESSW4C(object):
         self.timestamp = datetime.datetime.now(datetime.UTC)
         self.logger_level = logger.getEffectiveLevel()
         self.separator = ' '
-        self.format = file_format
-        if self.format == 'tsv':
+        self.file_format = file_format
+        if self.file_format == 'tsv':
             self.separator = '\t'
-        elif self.format == 'csv':
+        elif self.file_format == 'csv':
             self.separator = ','
-        elif self.format == 'txt':
+        elif self.file_format == 'txt':
             self.separator = ' '
         self.site = None
         if all([self.site_id, self.site_name, self.site_timezone, self.site_latitude, self.site_longitude, self.site_elevation]):
@@ -81,14 +81,14 @@ class TESSW4C(object):
             logger.error(f"Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
 
         self.device = None
-        if all([self.device_type, self.device_id, self.device_altitude, self.device_azimuth, self.device_tcp_ip, self.device_port]):
+        if all([self.device_type, self.device_id, self.device_altitude, self.device_azimuth, self.device_ip, self.device_port]):
             self.device = Device(
                 serial_id=self.device_id,
                 type=self.device_type,
                 altitude=self.device_altitude,
                 azimuth=self.device_azimuth,
                 site=self.site,
-                ip=self.device_tcp_ip,
+                ip=self.device_ip,
                 port=self.device_port)
         else:
             logger.error(f"Not enough information to define device")
@@ -113,7 +113,7 @@ class TESSW4C(object):
                         sleep(1)
         else:
             logger.error(f"Either use_udp or provide information to define a device.")
-            sys.exit(5)
+            sys.exit(1)
 
 
     def __call__(self):
@@ -241,7 +241,7 @@ class TESSW4C(object):
             save_files_to=self.save_files_to,
             device_name=data['name'],
             device_type=data['type'] if 'type' in data else self.device_type,
-            file_format=self.format)
+            file_format=self.file_format)
         if not os.path.exists(filename):
             header = self.__get_header(data=data, filename=filename)
             with open(filename, 'w') as f:
