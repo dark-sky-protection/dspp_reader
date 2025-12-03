@@ -8,7 +8,7 @@ dynamic = ["version"]
 description = "Software for reading SQMs and TESS-W4C devices, used for measuring sky brightness."
 readme = "README.md"
 requires-python = ">=3.13"
-license = {file = "LICENSE"}
+license = "BSD-3-Clause"
 keywords = [
   "sqm",
   "sqm-le",
@@ -33,7 +33,6 @@ classifiers = [
   'Intended Audience :: Developers',
   'Intended Audience :: Education',
   'Intended Audience :: Science/Research',
-  'License :: OSI Approved :: BSD License',
   'Programming Language :: Python :: 3.12',
   'Natural Language :: English',
   'Operating System :: POSIX :: Linux',
@@ -54,14 +53,14 @@ dependencies = [
 "Source" = "https://noirlab.edu"
 
 [project.scripts]
-#read_sqm = "goodman_pipeline.scripts:redccd"
-read_tess = "dspp_reader.tessw4c.script:script"
+read_sqmle = "dspp_reader.sqmle.scripts:read_sqmle"
+read_tessw4c = "dspp_reader.tessw4c.scripts:read_tessw4c"
 
 
 [tool.setuptools]
 packages = [
   "dspp_reader",
-  "dspp_reader.sqm",
+  "dspp_reader.sqmle",
   "dspp_reader.tessw4c",
 ]
 

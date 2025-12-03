@@ -4,8 +4,9 @@ import os
 import socket
 import logging
 import sys
+from json import JSONDecodeError
+from time import sleep
 
-import yaml
 
 from pathlib import Path
 from pytz import timezone as tz
@@ -19,23 +20,47 @@ logger = logging.getLogger(__name__)
 class TESSW4C(object):
 
     def __init__(self,
-                 bind_ip: str='0.0.0.0',
+                 use_udp: bool = False,
+                 udp_bind_ip: str='0.0.0.0',
                  udp_port: int =2255,
+                 device_type: str = 'tessw4c',
+                 device_id: str = '',
+                 device_altitude: int = 0,
+                 device_azimuth: int = 0,
+                 device_tcp_ip: str='0.0.0.0',
+                 device_port: int =23,
+                 site_id: str = '',
+                 site_name: str = '',
+                 site_timezone: str = '',
+                 site_latitude: str = '',
+                 site_longitude: str = '',
+                 site_elevation: str = '',
                  save_to_file: bool=True,
                  save_to_database: bool=False,
                  post_to_api: bool=False,
                  save_files_to: Path = os.getcwd(),
-                 file_format: str = 'tsv',
-                 config_file: Path = None):
-        self.bind_ip = bind_ip
+                 file_format: str = 'tsv'):
+        self.use_udp = use_udp
+        self.udp_bind_ip = udp_bind_ip
         self.udp_port = udp_port
+        self.device_type = device_type
+        self.device_id = device_id
+        self.device_altitude = device_altitude
+        self.device_azimuth = device_azimuth
+        self.device_tcp_ip = device_tcp_ip
+        self.device_port = device_port
+        self.site_id = site_id
+        self.site_name = site_name
+        self.site_timezone = site_timezone
+        self.site_latitude = site_latitude
+        self.site_longitude = site_longitude
+        self.site_elevation = site_elevation
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
         self.post_to_api = post_to_api
         self.save_files_to = Path(save_files_to)
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.bind((self.bind_ip, self.udp_port))
-        self.timestamp = datetime.datetime.now()
+        self.timestamp = datetime.datetime.now(datetime.UTC)
+
         self.separator = ' '
         self.format = file_format
         if self.format == 'tsv':
@@ -44,69 +69,115 @@ class TESSW4C(object):
             self.separator = ','
         elif self.format == 'txt':
             self.separator = ' '
-        self.config_file = Path(config_file) if config_file else Path(os.getcwd()) / 'config.yaml'
-        self.sites = set({})
-        self.devices = set({})
-        if os.path.exists(self.config_file) and os.path.isfile(self.config_file):
-            with open(self.config_file, 'r') as f:
-                config = yaml.safe_load(f)
-                if len(config['sites']) == 0:
-                    logger.error('No sites defined')
-                    sys.exit(1)
-                for site in config['sites']:
-                    new_site = Site(
-                        id=site['id'],
-                        latitude=site['latitude'],
-                        longitude=site['longitude'],
-                        elevation=site['elevation'],
-                        timezone=site['timezone'],
-                        name=site['name']
-                    )
-                    logger.info(f"Adding new site: {new_site.name}")
-                    self.sites.add(new_site)
-                    if len(site['devices']) == 0:
-                        logger.warning(f"No devices found for site: {new_site.name}")
-                    for device in site['devices']:
-                        if device['type'].upper() == 'TESSW4C' and device['active']:
-                            new_device = Device(
-                                serial_id=device['serial_id'],
-                                type=device['type'].upper(),
-                                altitude=device['altitude'],
-                                azimuth=device['azimuth'],
-                                site=new_site)
-                            logger.info(f"Adding new device: Type: {new_device.type} Serial ID: {new_device.serial_id}")
-                            self.devices.add(new_device)
-
+        self.site = None
+        if all([self.site_id, self.site_name, self.site_timezone, self.site_latitude, self.site_longitude, self.site_elevation]):
+            self.site = Site(
+                id=self.site_id,
+                name=self.site_name,
+                latitude=self.site_latitude,
+                longitude=self.site_longitude,
+                elevation=self.site_elevation,
+                timezone=self.site_timezone)
         else:
-            logger.error('Site and Devices configuration file not found')
+            logger.error(f"Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
 
-        logger.debug(f"TESSW4C initialized, listening on {self.bind_ip}:{self.udp_port}")
+        self.device = None
+        if all([self.device_type, self.device_id, self.device_altitude, self.device_azimuth, self.device_tcp_ip, self.device_port]):
+            self.device = Device(
+                serial_id=self.device_id,
+                type=self.device_type,
+                altitude=self.device_altitude,
+                azimuth=self.device_azimuth,
+                site=self.site,
+                ip=self.device_tcp_ip,
+                port=self.device_port)
+        else:
+            logger.error(f"Not enough information to define device")
+
+        self.udp_socket = None
+        self.tcp_socket = None
+        if self.use_udp:
+            self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            self.udp_socket.bind((self.udp_bind_ip, self.udp_port))
+            logger.debug(f"TESSW4C initialized, listening on {self.udp_bind_ip}:{self.udp_port}")
+        elif self.device:
+            while not self.tcp_socket:
+                try:
+                    logger.debug(f"Creating socket connection for {self.device.serial_id}")
+                    self.tcp_socket = socket.create_connection((self.device.ip, self.device.port), timeout=5)
+                    logger.info(f"Created socket connection for {self.device.serial_id}")
+                except OSError as e:
+                    timeout = 20
+                    print(f"\r{datetime.datetime.now().astimezone()}: Unable to connect to {self.device.serial_id} at {self.device.ip}:{self.device.port}: {e}")
+                    for i in range(1, timeout + 1, 1):
+                        print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
+                        sleep(1)
+        else:
+            logger.error(f"Either use_udp or provide information to define a device.")
+            sys.exit(5)
+
 
     def __call__(self):
         try:
+            logger.info(f"TESSW4C started using {'UDP' if self.use_udp else 'TCP/IP'}")
+            if self.site:
+                logger.info(f"Using site {self.site.name} at {self.site.latitude} {self.site.longitude}")
+            else:
+                logger.info(f"No site was defined or provided")
+            if self.device:
+                logger.info(f"Using device type {self.device.type}  Serial ID {self.device.serial_id} configured with Altitude {self.device.altitude} and Azimuth {self.device.azimuth}")
+            last_message_id = None
             while True:
-                self.timestamp = datetime.datetime.now(datetime.UTC)
-                data, addr = self.socket.recvfrom(2048)
-                parsed_data = json.loads(data.decode('utf-8'))
-                device_serial = parsed_data['name']
-                device = self.__get_device(serial_id=device_serial)
-                if not device:
-                    logger.debug(f"No matching device found with serial id: {device_serial}")
-                else:
-                    logger.debug(f"Found device: {device.serial_id} for site: {device.site.name}")
-                    next_sunset, next_sunrise, time_to_sunset, time_to_sunrise = device.site.get_time_range()
+                if self.device and self.device.site:
+                    next_sunset, next_sunrise, time_to_sunset, time_to_sunrise = self.device.site.get_time_range()
                     if time_to_sunrise > time_to_sunset:
                         logger.debug(f"Next Sunset is at {next_sunset.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
                         hours = int(time_to_sunset.sec // 3600)
                         minutes = int((time_to_sunset.sec % 3600) // 60)
                         seconds = int(time_to_sunset.sec % 60)
-                        print(f"\rWaiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next "
-                              f"sunset {next_sunset.to_datetime(timezone=tz(device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {device.site.timezone}", end="", flush=True)
+
+                        try:
+                            if self.tcp_socket:
+                                self.tcp_socket.recv(1024)
+                            print(f"\rWaiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next "
+                              f"sunset {next_sunset.to_datetime(timezone=tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} ",
+                              end="", flush=True)
+                        except OSError as e:
+                            print(f"\033[2K\rSocket error: {e}. The device may be unavailable.")
+
+                        continue
+                else:
+                    logger.warning(f"No device has been defined, this program will continue reading continuously.")
+
+                self.timestamp = datetime.datetime.now(datetime.UTC)
+
+                if self.use_udp:
+                    data, addr = self.udp_socket.recvfrom(2048)
+                    parsed_data = json.loads(data.decode('utf-8'))
+                    device_serial = parsed_data['name']
+                    logger.info(
+                        f"TESSW4C received message {parsed_data['udp']} at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} from ip address: {addr[0]}, device name: {self.device.serial_id if self.device else parsed_data['name']}")
+                    if self.device and (device_serial != self.device.serial_id):
+                            logger.warning(f"Provided device serial id {device_serial} does not match device retuned serial id {self.device.serial_id}")
+                else:
+                    try:
+                        data = self.tcp_socket.recv(1024)
+                        parsed_data = json.loads(data.decode('utf-8'))
+                        message_id = parsed_data['udp']
+                        if message_id != last_message_id:
+                            print(f"\rLast data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}", end="", flush=True)
+                            last_message_id = message_id
+                        else:
+                            logger.debug(f"Message skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} ")
+                            continue
+                    except TimeoutError:
+                        logger.error(f"Socket timed out")
+                        continue
+                    except JSONDecodeError as e:
+                        logger.error(f"Error parsing data: {e}")
                         continue
 
-
-                logger.info(f"TESSW4C received message at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} from ip address: {addr[0]}, device name: {device.serial_id if device else parsed_data['name']}")
-                augmented_data = self._augment_data(data=parsed_data, device=device)
+                augmented_data = self._augment_data(data=parsed_data, device=self.device)
                 if self.save_to_file:
                     self._write_to_file(data=augmented_data)
                 if self.save_to_database:
@@ -117,16 +188,14 @@ class TESSW4C(object):
         except KeyboardInterrupt:
             logger.info("TESSW4C stopped by user")
         finally:
-            self.socket.close()
-
-    def __get_device(self, serial_id):
-        for device in self.devices:
-            if device.serial_id == serial_id:
-                return device
-        return None
+            if self.udp_socket:
+                self.udp_socket.close()
+            if self.tcp_socket:
+                self.tcp_socket.close()
 
     def _augment_data(self, data, device=None):
-        data['timestamp'] = self.timestamp.isoformat()
+        data['timestamp'] = self.timestamp.isoformat() # UT, buscar formato con menos decimales si no formatear a mano
+        data['localtime'] = self.timestamp.astimezone().isoformat() # Local Time with UT Offset
         if device:
             data['altitude'] = device.altitude
             data['azimuth'] = device.azimuth
@@ -139,10 +208,10 @@ class TESSW4C(object):
 
         return data
 
-    def __get_filename(self, device_name):
+    def __get_filename(self, device_name, device_type):
 
         date = datetime.datetime.now().strftime("%Y%m%d")
-        return self.save_files_to / f"{date}_{device_name}.{self.format}"
+        return self.save_files_to / f"{date}_{device_type}_{device_name}.{self.format}"
 
     def __get_header(self, data, filename):
         columns = []
@@ -165,7 +234,7 @@ class TESSW4C(object):
         return f"{self.separator.join(fields)}\n"
 
     def _write_to_file(self, data):
-        filename = self.__get_filename(device_name=data['name'])
+        filename = self.__get_filename(device_name=data['name'], device_type=data['type'] if 'type' in data else self.device_type)
         if not os.path.exists(filename):
             header = self.__get_header(data=data, filename=filename)
             with open(filename, 'w') as f:
@@ -185,5 +254,5 @@ class TESSW4C(object):
 
 
 if __name__ == '__main__':
-    tess = TESSW4C()
+    tess = TESSW4C(use_udp=True)
     tess()
