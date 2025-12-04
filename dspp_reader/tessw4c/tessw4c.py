@@ -12,7 +12,7 @@ from pathlib import Path
 from pytz import timezone as tz
 
 from dspp_reader.tools import Site, Device
-from dspp_reader.tools.generics import get_filename
+from dspp_reader.tools.generics import augment_data, get_filename
 
 logger = logging.getLogger(__name__)
 
@@ -186,7 +186,7 @@ class TESSW4C(object):
                         logger.error(f"Error parsing data: {e}")
                         continue
 
-                augmented_data = self._augment_data(data=parsed_data, device=self.device)
+                augmented_data = augment_data(data=parsed_data, timestamp=self.timestamp, device=self.device)
                 if self.save_to_file:
                     self._write_to_file(data=augmented_data)
                 if self.save_to_database:
@@ -201,20 +201,6 @@ class TESSW4C(object):
                 self.udp_socket.close()
             if self.tcp_socket:
                 self.tcp_socket.close()
-
-    def _augment_data(self, data, device=None):
-        data['timestamp'] = self.timestamp.isoformat() # UT, buscar formato con menos decimales si no formatear a mano
-        data['localtime'] = self.timestamp.astimezone().isoformat() # Local Time with UT Offset
-        if device:
-            data['altitude'] = device.altitude
-            data['azimuth'] = device.azimuth
-            if device.site:
-                data['site'] = device.site.id
-                data['timezone'] = device.site.timezone
-                data['latitude'] = device.site.latitude.value
-                data['longitude'] = device.site.longitude.value
-                data['elevation'] = device.site.elevation.value
-        return data
 
     def __get_header(self, data, filename):
         columns = []
