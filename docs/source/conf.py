@@ -7,10 +7,10 @@
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 from importlib.metadata import version
 
-__version__ = version(__name__)
+__version__ = version('dspp_reader')
 version = '.'.join(__version__.split('.')[:2])
 release = __version__
-project = 'Dark Sky Protection Project Reader'
+project = 'Dark Sky Protection Photometers Reader'
 copyright = '2025, NOIRLab'
 author = 'Simón Torres, Guillermo Damke'
 license = 'bsd3'
