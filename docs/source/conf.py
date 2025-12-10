@@ -11,6 +11,7 @@ try:
     __version__ = version('dspp_reader')
 except PackageNotFoundError:
     __version__ = '0.0.0'
+
 version = '.'.join(__version__.split('.')[:2])
 release = __version__
 project = 'Dark Sky Protection Photometers Reader'

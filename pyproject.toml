@@ -55,9 +55,9 @@ dependencies = [
 ]
 
 [project.urls]
-"Homepage" = "https://noirlab.edu"
-"Bug Reports" = "https://noirlab.edu"
-"Source" = "https://noirlab.edu"
+"Homepage" = "https://dspp-reader.readthedocs.io/en/latest/"
+"Bug Reports" = "https://github.com/dark-sky-protection/dspp_reader/issues"
+"Source" = "https://github.com/dark-sky-protection/dspp_reader"
 
 [project.scripts]
 read_sqmle = "dspp_reader.sqmle.scripts:read_sqmle"
