@@ -36,6 +36,7 @@ class SQMLE(object):
                  device_azimuth:float = None,
                  device_ip:str = None,
                  device_port=10001,
+                 device_window_correction:float = 0,
                  number_of_reads=3,
                  reads_frequency=30,
                  save_to_file=True,
@@ -55,6 +56,7 @@ class SQMLE(object):
         self.device_altitude = device_altitude
         self.device_azimuth = device_azimuth
         self.device_ip = device_ip
+        self.device_window_correction = device_window_correction
 
         self.number_of_reads = number_of_reads
         self.reads_frequency = reads_frequency
@@ -92,6 +94,7 @@ class SQMLE(object):
                 type=self.device_type,
                 altitude=self.device_altitude,
                 azimuth=self.device_azimuth,
+                window_correction=self.device_window_correction,
                 site=self.site,
                 ip=self.device_ip,
                 port=self.device_port,
@@ -177,7 +180,11 @@ class SQMLE(object):
                     elif len(measurements) > 1:
                         raise NotImplementedError("Averaging data does is not yet implemented. Use --number-of-reads 1")
 
-                    augmented_data = augment_data(data=data, timestamp=self.timestamp, device=self.device)
+                    corrected_data =  self.__apply_window_correction(data=data)
+
+                    print(data['magnitude'], corrected_data['magnitude'], self.device_window_correction)
+
+                    augmented_data = augment_data(data=corrected_data, timestamp=self.timestamp, device=self.device)
 
                     if self.save_to_file:
                         self._write_to_txt(data=augmented_data)
@@ -200,6 +207,10 @@ class SQMLE(object):
         sock.sendall(command)
         data = sock.recv(1024)
         return data.decode()
+
+    def __apply_window_correction(self, data):
+        data['magnitude'] = data['magnitude'] + self.device_window_correction * u.mag
+        return data
 
     def _parse_data(self, data, command):
         data = data.split(',')
