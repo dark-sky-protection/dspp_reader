@@ -115,7 +115,18 @@ class SQMLE(object):
                         sleep(1)
         else:
             logger.error(f"A device is needed to be able to continue")
+            logger.info(f"Use the argument  --help for more information")
             sys.exit(1)
+
+        if self.save_to_file:
+            if not os.path.exists(self.save_files_to):
+                try:
+                    os.makedirs(self.save_files_to)
+                    logger.info(f"Created directory {self.save_files_to}")
+                except OSError:
+                    logger.error(f"Could not create directory {self.save_files_to}")
+                    sys.exit(1)
+            logger.info(f"Data will be saved to {self.save_files_to}")
 
     def __call__(self):
         try:

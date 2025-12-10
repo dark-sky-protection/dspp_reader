@@ -67,6 +67,7 @@ class TESSW4C(object):
             self.separator = ','
         elif self.file_format == 'txt':
             self.separator = ' '
+
         self.site = None
         if all([self.site_id, self.site_name, self.site_timezone, self.site_latitude, self.site_longitude, self.site_elevation]):
             self.site = Site(
@@ -112,7 +113,18 @@ class TESSW4C(object):
                         sleep(1)
         else:
             logger.error(f"Either use_udp or provide information to define a device.")
+            logger.info(f"Use the argument  --help for more information")
             sys.exit(1)
+
+        if self.save_to_file:
+            if not os.path.exists(self.save_files_to):
+                try:
+                    os.makedirs(self.save_files_to)
+                    logger.info(f"Created directory {self.save_files_to}")
+                except OSError:
+                    logger.error(f"Could not create directory {self.save_files_to}")
+                    sys.exit(1)
+            logger.info(f"Data will be saved to {self.save_files_to}")
 
 
     def __call__(self):
