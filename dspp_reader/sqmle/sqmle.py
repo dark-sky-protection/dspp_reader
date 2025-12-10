@@ -9,6 +9,7 @@ import sys
 from astropy.units import Quantity
 from pathlib import Path
 from time import sleep
+from zoneinfo import ZoneInfo
 
 from dspp_reader.tools import Device, Site
 from dspp_reader.tools.generics import augment_data, get_filename
@@ -120,6 +121,33 @@ class SQMLE(object):
         try:
             while True:
                 if self.device and self.socket:
+                    if self.device.site:
+                        next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range()
+                        if time_to_next_end > time_to_next_start:
+                            logger.debug(
+                                f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                            hours = int(time_to_next_start.sec // 3600)
+                            minutes = int((time_to_next_start.sec % 3600) // 60)
+                            seconds = int(time_to_next_start.sec % 60)
+
+                            try:
+                                self._send_command(command=UNIT_INFORMATION_REQUEST, sock=self.socket)
+                                message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
+                                if logger.getEffectiveLevel() == logging.DEBUG:
+                                    logger.debug(message)
+                                else:
+                                    print(f"\r{message}", end="", flush=True)
+                            except OSError as e:
+                                error_message = f"Socket error: {e}. The device may be unavailable."
+                                if logger.getEffectiveLevel() == logging.DEBUG:
+                                    logger.debug(error_message)
+                                else:
+                                    print(f"\033[2K\r{error_message}", end="", flush=True)
+
+                            continue
+                    else:
+                        logger.warning(f"No device has been defined, this program will continue reading continuously.")
+
                     self.timestamp = datetime.datetime.now(datetime.UTC)
                     data = {}
                     measurements = []

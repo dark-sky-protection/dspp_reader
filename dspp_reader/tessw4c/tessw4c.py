@@ -7,9 +7,8 @@ import sys
 from json import JSONDecodeError
 from time import sleep
 
-
 from pathlib import Path
-from pytz import timezone as tz
+from zoneinfo import ZoneInfo
 
 from dspp_reader.tools import Site, Device
 from dspp_reader.tools.generics import augment_data, get_filename
@@ -128,17 +127,17 @@ class TESSW4C(object):
             last_message_id = None
             while True:
                 if self.device and self.device.site:
-                    next_sunset, next_sunrise, time_to_sunset, time_to_sunrise = self.device.site.get_time_range()
-                    if time_to_sunrise > time_to_sunset:
-                        logger.debug(f"Next Sunset is at {next_sunset.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
-                        hours = int(time_to_sunset.sec // 3600)
-                        minutes = int((time_to_sunset.sec % 3600) // 60)
-                        seconds = int(time_to_sunset.sec % 60)
+                    next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range()
+                    if time_to_next_end > time_to_next_start:
+                        logger.debug(f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                        hours = int(time_to_next_start.sec // 3600)
+                        minutes = int((time_to_next_start.sec % 3600) // 60)
+                        seconds = int(time_to_next_start.sec % 60)
 
                         try:
                             if self.tcp_socket:
                                 self.tcp_socket.recv(1024)
-                            message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_sunset.to_datetime(timezone=tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
+                            message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                             if self.logger_level == logging.DEBUG:
                                 logger.debug(message)
                             else:
@@ -170,7 +169,7 @@ class TESSW4C(object):
                         parsed_data = json.loads(data.decode('utf-8'))
                         message_id = parsed_data['udp']
                         if message_id != last_message_id:
-                            message = f"Last data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(tz(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}"
+                            message = f"Last data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}"
                             if self.logger_level == logging.DEBUG:
                                 logger.debug(message)
                             else:

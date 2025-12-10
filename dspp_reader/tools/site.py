@@ -21,12 +21,12 @@ class Site(object):
             timezone=tz(self.timezone),
             description=self.name)
 
-    def get_time_range(self):
+    def get_time_range(self, sun_altitude:int = -10):
         now = Time(datetime.datetime.now(datetime.UTC))
         # now = Time("2024-12-02 09:00:00")
         reference_time = now
-        next_sunset = self.observer.sun_set_time(reference_time, which='next', horizon=-10 * u.deg)
-        next_sunrise = self.observer.sun_rise_time(reference_time, which='next', horizon=-10 * u.deg)
-        time_to_sunset = next_sunset - now
-        time_to_sunrise = next_sunrise - now
-        return next_sunset, next_sunrise, time_to_sunset, time_to_sunrise
+        next_period_start = self.observer.sun_set_time(reference_time, which='next', horizon=sun_altitude * u.deg)
+        next_period_end = self.observer.sun_rise_time(reference_time, which='next', horizon=sun_altitude * u.deg)
+        time_to_next_start = next_period_start - now
+        time_to_next_end = next_period_end - now
+        return next_period_start, next_period_end, time_to_next_start, time_to_next_end
