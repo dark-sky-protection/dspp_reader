@@ -5,9 +5,12 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
-from importlib.metadata import version
+from importlib.metadata import version, PackageNotFoundError
 
-__version__ = version('dspp_reader')
+try:
+    __version__ = version('dspp_reader')
+except PackageNotFoundError:
+    __version__ = '0.0.0'
 version = '.'.join(__version__.split('.')[:2])
 release = __version__
 project = 'Dark Sky Protection Photometers Reader'
