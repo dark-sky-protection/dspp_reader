@@ -117,6 +117,7 @@ def get_args(args=None, has_upd=False, default_device_type='photometer'):
         parser.add_argument('--udp-bind-ip', action='store', dest='udp_bind_ip', type=str, default='0.0.0.0', help='IP address to bind to')
         parser.add_argument('--udp-port', action='store', dest='udp_port', type=int, default=2255,help="UDP port to listen on")
     if default_device_type in ['sqmle']:
+        parser.add_argument('--device-window-correction', action='store', dest='device_window_correction', type=float, default=0, help='If an SQM was mounted in housing with acrylic window the correction must be -0.11 mag')
         parser.add_argument('--number-of-reads', action='store', dest='number_of_reads', type=int, default=5, help='Number of reads to average')
         parser.add_argument('--reads-frequency', action='store', dest='reads_frequency', type=int, default=30, help='How many seconds between reads')
     parser.add_argument('--save-to-file', action='store_false', dest='save_to_file', help="Save to a plain text file")

@@ -9,6 +9,7 @@ import sys
 from astropy.units import Quantity
 from pathlib import Path
 from time import sleep
+from zoneinfo import ZoneInfo
 
 from dspp_reader.tools import Device, Site
 from dspp_reader.tools.generics import augment_data, get_filename
@@ -35,6 +36,7 @@ class SQMLE(object):
                  device_azimuth:float = None,
                  device_ip:str = None,
                  device_port=10001,
+                 device_window_correction:float = 0,
                  number_of_reads=3,
                  reads_frequency=30,
                  save_to_file=True,
@@ -54,6 +56,7 @@ class SQMLE(object):
         self.device_altitude = device_altitude
         self.device_azimuth = device_azimuth
         self.device_ip = device_ip
+        self.device_window_correction = device_window_correction
 
         self.number_of_reads = number_of_reads
         self.reads_frequency = reads_frequency
@@ -91,6 +94,7 @@ class SQMLE(object):
                 type=self.device_type,
                 altitude=self.device_altitude,
                 azimuth=self.device_azimuth,
+                window_correction=self.device_window_correction,
                 site=self.site,
                 ip=self.device_ip,
                 port=self.device_port,
@@ -114,12 +118,50 @@ class SQMLE(object):
                         sleep(1)
         else:
             logger.error(f"A device is needed to be able to continue")
+            logger.info(f"Use the argument  --help for more information")
             sys.exit(1)
+
+        if self.save_to_file:
+            if not os.path.exists(self.save_files_to):
+                try:
+                    os.makedirs(self.save_files_to)
+                    logger.info(f"Created directory {self.save_files_to}")
+                except OSError:
+                    logger.error(f"Could not create directory {self.save_files_to}")
+                    sys.exit(1)
+            logger.info(f"Data will be saved to {self.save_files_to}")
 
     def __call__(self):
         try:
             while True:
                 if self.device and self.socket:
+                    if self.device.site:
+                        next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range()
+                        if time_to_next_end > time_to_next_start:
+                            logger.debug(
+                                f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                            hours = int(time_to_next_start.sec // 3600)
+                            minutes = int((time_to_next_start.sec % 3600) // 60)
+                            seconds = int(time_to_next_start.sec % 60)
+
+                            try:
+                                self._send_command(command=UNIT_INFORMATION_REQUEST, sock=self.socket)
+                                message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
+                                if logger.getEffectiveLevel() == logging.DEBUG:
+                                    logger.debug(message)
+                                else:
+                                    print(f"\r{message}", end="", flush=True)
+                            except OSError as e:
+                                error_message = f"Socket error: {e}. The device may be unavailable."
+                                if logger.getEffectiveLevel() == logging.DEBUG:
+                                    logger.debug(error_message)
+                                else:
+                                    print(f"\033[2K\r{error_message}", end="", flush=True)
+
+                            continue
+                    else:
+                        logger.warning(f"No device has been defined, this program will continue reading continuously.")
+
                     self.timestamp = datetime.datetime.now(datetime.UTC)
                     data = {}
                     measurements = []
@@ -138,7 +180,11 @@ class SQMLE(object):
                     elif len(measurements) > 1:
                         raise NotImplementedError("Averaging data does is not yet implemented. Use --number-of-reads 1")
 
-                    augmented_data = augment_data(data=data, timestamp=self.timestamp, device=self.device)
+                    corrected_data =  self.__apply_window_correction(data=data)
+
+                    print(data['magnitude'], corrected_data['magnitude'], self.device_window_correction)
+
+                    augmented_data = augment_data(data=corrected_data, timestamp=self.timestamp, device=self.device)
 
                     if self.save_to_file:
                         self._write_to_txt(data=augmented_data)
@@ -161,6 +207,10 @@ class SQMLE(object):
         sock.sendall(command)
         data = sock.recv(1024)
         return data.decode()
+
+    def __apply_window_correction(self, data):
+        data['magnitude'] = data['magnitude'] + self.device_window_correction * u.mag
+        return data
 
     def _parse_data(self, data, command):
         data = data.split(',')
