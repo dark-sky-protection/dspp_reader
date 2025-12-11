@@ -4,55 +4,64 @@ import sys
 import yaml
 
 from importlib.metadata import version
+from pathlib import Path
+
 from dspp_reader.tessw4c import TESSW4C
 from dspp_reader.tools import get_args, setup_logging
 
 __version__ = version("dspp-reader")
 
-CONFIG_FIELDS = [
-    "site_id",
-    "site_name",
-    "site_latitude",
-    "site_longitude",
-    "site_elevation",
-    "site_timezone",
-    "device_type",
-    "device_id",
-    "device_altitude",
-    "device_azimuth",
-    "device_ip",
-    "device_port",
-    "use_udp",
-    "udp_bind_ip",
-    "udp_port",
-    "save_to_file",
-    "save_to_database",
-    "post_to_api",
-    "save_files_to",
-    "file_format",
-]
+CONFIG_FIELDS_DEFAULT = {
+    "site_id": "ctio",
+    "site_name": "Cerro Tololo",
+    "site_latitude": -30.169166,
+    "site_longitude": -70.804,
+    "site_elevation": 2174,
+    "site_timezone": "America/Santiago",
+    "sun_altitude": -10,
+    "device_type": "tessw4c",
+    "device_id": "stars1823",
+    "device_altitude": 45,
+    "device_azimuth": 0,
+    "device_ip": "0.0.0.0",
+    "device_port": 32,
+    "use_udp": False,
+    "udp_bind_ip": "0.0.0.0",
+    "udp_port": 2255,
+    "read_all_the_time": False,
+    "save_to_file": True,
+    "save_to_database": False,
+    "post_to_api": False,
+    "save_files_to": os.getcwd(),
+    "file_format": 'tsv',
+}
 
 def read_tessw4c(args=None):
-    args = get_args(args=args, has_upd=True, default_device_type='tessw4c')
-
-
-    site = {}
-    if args.config_file and os.path.isfile(args.config_file):
-        with open(args.config_file, 'r') as f:
-            site = yaml.safe_load(f) or {}
-
-    config = {}
-    for field in CONFIG_FIELDS:
-        config[field] = site.get(field, getattr(args, field))
+    args = get_args(device_type='tess-w4c', args=args, has_upd=True)
 
     if args.config_file_example:
         print("# Add this to a .yaml file, reference it later with --config-file <file_name>.yaml")
-        print(yaml.dump(config, default_flow_style=False, sort_keys=False))
+        print(yaml.dump(CONFIG_FIELDS_DEFAULT, default_flow_style=False, sort_keys=False))
         sys.exit(0)
+
+
+    site_config = {}
+    if args.config_file and os.path.isfile(args.config_file):
+        with open(args.config_file, 'r') as f:
+            site_config = yaml.safe_load(f) or {}
+
+    config = {"device_type": 'tessw4c',}
+    for field in CONFIG_FIELDS_DEFAULT.keys():
+        if field not in args.__dict__:
+            config[field] = site_config.get(field)
+        else:
+            config[field] = getattr(args, field)
 
     setup_logging(debug=args.debug, device_type=config['device_type'], device_id=config['device_id'])
     logger = logging.getLogger()
     logger.info(f"Starting TESSW4C reader, Version: {__version__}")
+
+    logger.debug(f"Using the following configuration:\n{yaml.dump(config, default_flow_style=False, sort_keys=False)}")
 
     try:
         tessw4c = TESSW4C(
@@ -62,19 +71,21 @@ def read_tessw4c(args=None):
             site_longitude=config["site_longitude"],
             site_elevation=config["site_elevation"],
             site_timezone=config["site_timezone"],
+            sun_altitude=float(config["sun_altitude"]),
             device_type=config["device_type"],
             device_id=config["device_id"],
-            device_altitude=config["device_altitude"],
-            device_azimuth=config["device_azimuth"],
+            device_altitude=float(config["device_altitude"]),
+            device_azimuth=float(config["device_azimuth"]),
             device_ip=config["device_ip"],
-            device_port=config["device_port"],
-            use_udp=config["use_udp"],
+            device_port=int(config["device_port"]),
+            use_udp=bool(config["use_udp"]),
             udp_bind_ip=config["udp_bind_ip"],
-            udp_port=config["udp_port"],
-            save_to_file=config["save_to_file"],
-            save_to_database=config["save_to_database"],
-            post_to_api=config["post_to_api"],
-            save_files_to=config["save_files_to"],
+            udp_port=int(config["udp_port"]),
+            read_all_the_time=bool(config["read_all_the_time"]),
+            save_to_file=bool(config["save_to_file"]),
+            save_to_database=bool(config["save_to_database"]),
+            post_to_api=bool(config["post_to_api"]),
+            save_files_to=Path(config["save_files_to"]),
             file_format=config["file_format"])
 
         tessw4c()
