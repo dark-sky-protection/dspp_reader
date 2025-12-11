@@ -25,7 +25,7 @@ class TESSW4C(object):
                  site_longitude: str = '',
                  site_elevation: str = '',
                  sun_altitude: float = -10,
-                 device_type: str = 'tessw4c',
+                 device_type: str = 'tess-w4c',
                  device_id: str = '',
                  device_altitude: float = 0,
                  device_azimuth: float = 0,
@@ -107,7 +107,7 @@ class TESSW4C(object):
         if self.use_udp:
             self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             self.udp_socket.bind((self.udp_bind_ip, self.udp_port))
-            logger.debug(f"TESSW4C initialized, listening on {self.udp_bind_ip}:{self.udp_port}")
+            logger.debug(f"{self.device_type.upper()} initialized, listening on {self.udp_bind_ip}:{self.udp_port}")
         elif self.device:
             while not self.tcp_socket:
                 try:
@@ -138,7 +138,7 @@ class TESSW4C(object):
 
     def __call__(self):
         try:
-            logger.info(f"TESSW4C started using {'UDP' if self.use_udp else 'TCP/IP'}")
+            logger.info(f"{self.device_type.upper()} started using {'UDP' if self.use_udp else 'TCP/IP'}")
             if self.site:
                 logger.info(f"Using site {self.site.name} at {self.site.latitude} {self.site.longitude}")
             else:
@@ -181,7 +181,7 @@ class TESSW4C(object):
                     parsed_data = json.loads(data.decode('utf-8'))
                     device_serial = parsed_data['name']
                     logger.info(
-                        f"TESSW4C received message {parsed_data['udp']} at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} from ip address: {addr[0]}, device name: {self.device.serial_id if self.device else parsed_data['name']}")
+                        f"{self.device_type.upper()} received message {parsed_data['udp']} at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} from ip address: {addr[0]}, device name: {self.device.serial_id if self.device else parsed_data['name']}")
                     if self.device and (device_serial != self.device.serial_id):
                             logger.warning(f"Provided device serial id {device_serial} does not match device retuned serial id {self.device.serial_id}")
                 else:
@@ -215,7 +215,7 @@ class TESSW4C(object):
                     self._post_to_api(data=augmented_data)
 
         except KeyboardInterrupt:
-            logger.info("TESSW4C stopped by user")
+            logger.info(f"{self.device_type.upper()} stopped by user")
         finally:
             if self.udp_socket:
                 self.udp_socket.close()
@@ -255,7 +255,7 @@ class TESSW4C(object):
         data_line = self.__get_line_for_plain_text(data)
         with open(filename, 'a') as f:
             f.write(data_line)
-            logger.debug(f"TESSW4C data written to {filename}")
+            logger.debug(f"{self.device_type.upper()} data written to {filename}")
 
     def _write_to_database(self, data):
         print(data)

@@ -30,7 +30,8 @@ class SQMLE(object):
                  site_latitude: str = '',
                  site_longitude: str = '',
                  site_elevation: str = '',
-                 device_type:str = 'sqmle',
+                 sun_altitude: float = -10,
+                 device_type:str = 'sqm-le',
                  device_id:str = None,
                  device_altitude:float = None,
                  device_azimuth:float = None,
@@ -38,7 +39,9 @@ class SQMLE(object):
                  device_port=10001,
                  device_window_correction:float = 0,
                  number_of_reads=3,
+                 reads_spacing=1,
                  reads_frequency=30,
+                 read_all_the_time:bool = False,
                  save_to_file=True,
                  save_to_database=False,
                  post_to_api=False,
@@ -50,6 +53,7 @@ class SQMLE(object):
         self.site_latitude = site_latitude
         self.site_longitude = site_longitude
         self.site_elevation = site_elevation
+        self.sun_altitude = sun_altitude
         self.device_type = device_type
         self.device_id = device_id
         self.device_port = device_port
@@ -59,7 +63,9 @@ class SQMLE(object):
         self.device_window_correction = device_window_correction
 
         self.number_of_reads = number_of_reads
+        self.reads_spacing = reads_spacing
         self.reads_frequency = reads_frequency
+        self.read_all_the_time = read_all_the_time
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
         self.post_to_api = post_to_api
@@ -76,7 +82,7 @@ class SQMLE(object):
             self.separator = " "
 
         self.site = None
-        if all([self.site_id, self.site_name, self.site_timezone, self.site_latitude, self.site_longitude, self.site_elevation]):
+        if all([self.site_id, self.site_name, self.site_timezone, self.site_latitude, self.site_longitude, isinstance(float(self.site_elevation), float)]):
             self.site = Site(
                 id=self.site_id,
                 name=self.site_name,
@@ -142,8 +148,8 @@ class SQMLE(object):
             while True:
                 if self.device and self.socket:
                     if self.device.site:
-                        next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range()
-                        if time_to_next_end > time_to_next_start:
+                        next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
+                        if time_to_next_end > time_to_next_start and not self.read_all_the_time:
                             logger.debug(
                                 f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
                             hours = int(time_to_next_start.sec // 3600)
@@ -171,24 +177,34 @@ class SQMLE(object):
                     self.timestamp = datetime.datetime.now(datetime.UTC)
                     data = {}
                     measurements = []
-                    for read in range(1, self.number_of_reads + 1, 1):
-                        logger.debug(f"Reading {read} of {self.number_of_reads}...")
-                        data = self._send_command(command=READ_WITH_SERIAL_NUMBER, sock=self.socket)
-                        logger.debug(f"Response: {data}")
-                        parsed_data = self._parse_data(data=data, command=READ_WITH_SERIAL_NUMBER)
-                        measurements.append(parsed_data)
-                        if self.device.serial_id:
-                            if self.device.serial_id != parsed_data['serial_number']:
-                                logger.warning(
-                                    f"Serial number mismatch: {self.device.serial_id} != {parsed_data['serial_number']}")
+                    try:
+                        for read in range(1, self.number_of_reads + 1, 1):
+                            logger.debug(f"Reading {read} of {self.number_of_reads}...")
+                            data = self._send_command(command=READ_WITH_SERIAL_NUMBER, sock=self.socket)
+                            logger.debug(f"Response: {data}")
+
+                            parsed_data = self._parse_data(data=data, command=READ_WITH_SERIAL_NUMBER)
+
+                            measurements.append(parsed_data)
+                            if self.device.serial_id:
+                                if self.device.serial_id != parsed_data['serial_number']:
+                                    logger.warning(
+                                        f"Serial number mismatch: {self.device.serial_id} != {parsed_data['serial_number']}")
+                            sleep(self.reads_spacing)
+
+                    except IndexError as e:
+                        logger.error(f"Error parsing data: Key error: {e}", exc_info=logger.getEffectiveLevel() == logging.DEBUG)
+                        sleep(self.reads_spacing)
+                        continue
+                    if len(measurements) == 0:
+                        logger.warning(f"No data has been read, this program will continue.")
+                        continue
                     if len(measurements) == 1:
                         data = measurements[0]
                     elif len(measurements) > 1:
-                        raise NotImplementedError("Averaging data does is not yet implemented. Use --number-of-reads 1")
+                        raise NotImplementedError("Averaging data is not yet implemented. Use --number-of-reads 1")
 
-                    corrected_data =  self.__apply_window_correction(data=data)
-
-                    print(data['magnitude'], corrected_data['magnitude'], self.device_window_correction)
+                    corrected_data = self.__apply_window_correction(data=data)
 
                     augmented_data = augment_data(data=corrected_data, timestamp=self.timestamp, device=self.device)
 
@@ -198,9 +214,17 @@ class SQMLE(object):
                         self._write_to_database()
                     if self.post_to_api:
                         self._post_to_api()
-                for i in range(self.reads_frequency):
-                    print(f"\rNext read in {self.reads_frequency - i} seconds...", end="", flush=True)
-                    sleep(1)
+
+                    last_datapoint = datetime.datetime.now(datetime.UTC)
+
+                    for i in range(self.reads_frequency):
+                        print(f"\rLast Datapoint recorded at {last_datapoint.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {last_datapoint.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}. Next read in {self.reads_frequency - i} seconds...", end="", flush=True)
+                        sleep(1)
+                else:
+                    if not self.device:
+                        logger.error(f"A device is needed to be able to continue")
+                    if not self.socket:
+                        logger.error(f"It seems that the connection to the device is unavailable")
         except KeyboardInterrupt:
             logger.info("SQM-LE stopped by user")
         except ConnectionRefusedError:
