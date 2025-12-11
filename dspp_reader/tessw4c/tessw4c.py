@@ -81,7 +81,12 @@ class TESSW4C(object):
             logger.error(f"Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
 
         self.device = None
-        if all([self.device_type, self.device_id, self.device_altitude, self.device_azimuth, self.device_ip, self.device_port]):
+        if all([self.device_type,
+                self.device_id,
+                isinstance(float(self.device_altitude), float),
+                isinstance(float(self.device_azimuth), float),
+                self.device_ip,
+                self.device_port]):
             self.device = Device(
                 serial_id=self.device_id,
                 type=self.device_type,
