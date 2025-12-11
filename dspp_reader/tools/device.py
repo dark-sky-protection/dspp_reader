@@ -13,13 +13,13 @@ class Device(object):
         self.ip = ip
         self.port = port
         self.window_correction = window_correction
-        if self.type == 'sqmle' and ip is None and port is None:
+        if self.type in ['smqle', 'sqm-le'] and ip is None and port is None:
             raise ValueError('ip and port must be specified for SQM-LE device')
 
     def __repr__(self):
-        if self.type == 'sqmle':
+        if self.type in ['sqmle', 'sqm-le']:
             return f"Type: {self.type}\nSerial ID: {self.serial_id}\nAlt: {self.altitude}\nAz: {self.azimuth}\nSite: {self.site.name if self.site else 'No site'}\nIP: {self.ip}\nPort: {self.port}\nWindow Correction {self.window_correction}"
-        elif self.type == 'tessw4c':
+        elif self.type in ['tessw4c', 'tess-w4c']:
             return f"Type: {self.type}\nSerial ID: {self.serial_id}\nAlt: {self.altitude}\nAz: {self.azimuth}\nSite: {self.site.name if self.site else 'No site'}\nWindow Correction {self.window_correction}"
         else:
             return f"Device of unknown type: {self.type}"

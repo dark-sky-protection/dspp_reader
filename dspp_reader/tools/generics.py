@@ -1,16 +1,16 @@
-import os
 import datetime
 import logging
-import tzlocal
 
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, SUPPRESS
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
 
 from pathlib import Path
 
+
 __version__ = version('dspp-reader')
+
 
 class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):
     """Custom log filename handler with name rotation"""
@@ -97,37 +97,43 @@ def get_filename(save_files_to: Path, device_name:str, device_type: str, file_fo
         date_string = now_local.strftime('%Y%m%d')
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
-def get_args(args=None, has_upd=False, default_device_type='photometer'):
-    parser = ArgumentParser(description=f"TESSW4C reader\nVersion: {__version__}")
+def get_args(device_type, args=None, has_upd=False):
+    parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
-    parser.add_argument('--site-id', action='store', dest='site_id', type=str, default='ctio', help='Site ID')
-    parser.add_argument('--site-name', action='store', dest='site_name', type=str, default='Cerro Tololo', help='Site name')
-    parser.add_argument('--site-latitude', action='store', dest='site_latitude', type=float, default=-30.169166, help='Site latitude')
-    parser.add_argument('--site-longitude', action='store', dest='site_longitude', type=float, default=-70.804, help='Site longitude')
-    parser.add_argument('--site-elevation', action='store', dest='site_elevation', type=int, default=2174, help='Site elevation')
-    parser.add_argument('--site-timezone', action='store', dest='site_timezone', default=tzlocal.get_localzone_name(), help='Site timezone')
-    parser.add_argument('--device-type', action='store', dest='device_type', type=str, default=default_device_type, help='Device type')
-    parser.add_argument('--device-id', action='store', dest='device_id', type=str, default='unknown', help='Device serial ID')
-    parser.add_argument('--device-altitude', action='store', dest='device_altitude', type=float, default=90, help='Device altitude')
-    parser.add_argument('--device-azimuth', action='store', dest='device_azimuth', type=float, default=0, help='Device azimuth')
-    parser.add_argument('--device-ip', action='store', dest='device_ip', type=str, default='0.0.0.0', help='Device IP address')
-    parser.add_argument('--device-port', action='store', dest='device_port', type=int, default=32, help='Device TCP port')
+    parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')
+    parser.add_argument('--site-name', action='store', dest='site_name', type=str, default=SUPPRESS, help='Full site name')
+    parser.add_argument('--site-latitude', action='store', dest='site_latitude', type=float, default=SUPPRESS, help='Site latitude')
+    parser.add_argument('--site-longitude', action='store', dest='site_longitude', type=float, default=SUPPRESS, help='Site longitude')
+    parser.add_argument('--site-elevation', action='store', dest='site_elevation', type=int, default=SUPPRESS, help='Site elevation')
+    parser.add_argument('--site-timezone', action='store', dest='site_timezone', default=SUPPRESS, help='Site timezone')
+    parser.add_argument('--sun-altitude', action='store', dest='sun_altitude', type=float, default=SUPPRESS, help='Sun altitude with respect to the horizon. This defines when to start reading.')
+    # parser.add_argument('--device-type', action='store', dest='device_type', type=str, choices=['sqmle', 'tessw4c'], default=SUPPRESS, help='Device type')
+    parser.add_argument('--device-id', action='store', dest='device_id', type=str, default=SUPPRESS, help='Device serial ID')
+    parser.add_argument('--device-altitude', action='store', dest='device_altitude', type=float, default=SUPPRESS, help='Device altitude')
+    parser.add_argument('--device-azimuth', action='store', dest='device_azimuth', type=float, default=SUPPRESS, help='Device azimuth')
+    parser.add_argument('--device-ip', action='store', dest='device_ip', type=str, default=SUPPRESS, help='Device IP address')
+    parser.add_argument('--device-port', action='store', dest='device_port', type=int, default=SUPPRESS, help='Device TCP port')
     if has_upd:
-        parser.add_argument('--use-udp', action='store_true', dest='use_udp', help='Read device by subscribing to an UDP port')
-        parser.add_argument('--udp-bind-ip', action='store', dest='udp_bind_ip', type=str, default='0.0.0.0', help='IP address to bind to')
-        parser.add_argument('--udp-port', action='store', dest='udp_port', type=int, default=2255,help="UDP port to listen on")
-    if default_device_type in ['sqmle']:
-        parser.add_argument('--device-window-correction', action='store', dest='device_window_correction', type=float, default=0, help='If an SQM was mounted in housing with acrylic window the correction must be -0.11 mag')
-        parser.add_argument('--number-of-reads', action='store', dest='number_of_reads', type=int, default=5, help='Number of reads to average')
-        parser.add_argument('--reads-frequency', action='store', dest='reads_frequency', type=int, default=30, help='How many seconds between reads')
-    parser.add_argument('--save-to-file', action='store_false', dest='save_to_file', help="Save to a plain text file")
+        parser.add_argument('--use-udp', action='store_true', dest='use_udp', default=False, help='Read device by subscribing to an UDP port')
+        parser.add_argument('--udp-bind-ip', action='store', dest='udp_bind_ip', type=str, default=SUPPRESS, help='IP address to bind to')
+        parser.add_argument('--udp-port', action='store', dest='udp_port', type=int, default=SUPPRESS,help="UDP port to listen on")
+    if device_type in ['sqm-le']:
+        parser.add_argument('--device-window-correction', action='store', dest='device_window_correction', type=float, default=SUPPRESS, help='If an SQM was mounted in housing with acrylic window the correction must be -0.11 mag')
+        parser.add_argument('--number-of-reads', action='store', dest='number_of_reads', type=int, default=SUPPRESS, help='Number of reads to average')
+        parser.add_argument('--reads-frequency', action='store', dest='reads_frequency', type=int, default=SUPPRESS, help='How many seconds between reads')
+    parser.add_argument('--read-all-the-time', action='store_true', dest='read_all_the_time', default=False, help='Allows to ignore the time constraints')
+    parser.add_argument('--save-to-file', action='store_true', dest='save_to_file', help="Save to a plain text file")
     parser.add_argument('--save-to-database', action='store_true', dest='save_to_database', help="Save to a database")
     parser.add_argument('--post-to-api', action='store_true', dest='post_to_api', help="Send data through a POST request to a REST API")
-    parser.add_argument('--save-files-to', action='store', dest='save_files_to', default=os.getcwd(), help="Destination path to save files")
-    parser.add_argument('--file-format', action='store', dest='file_format', default='tsv', help='File format to use')
-    parser.add_argument('--config-file', action='store', dest='config_file', default=None, help="Configuration file full path")
+    parser.add_argument('--save-files-to', action='store', dest='save_files_to', default=SUPPRESS, help="Destination path to save files")
+    parser.add_argument('--file-format', action='store', dest='file_format', choices=['tsv', 'csv', 'txt'], default=SUPPRESS, help='File format to use')
+    parser.add_argument('--config-file', action='store', dest='config_file', default=SUPPRESS, help="Configuration file full path")
     parser.add_argument('--config-file-example', action='store_true', dest='config_file_example', help="Print a configuration file example")
     parser.add_argument('--debug', action='store_true', dest='debug', default=False, help="Enable debug mode")
 
     args = parser.parse_args(args=args)
+
+    if not any(list(args.__dict__.values())):
+        parser.print_help()
+        exit(1)
     return args
