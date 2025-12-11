@@ -1,19 +1,13 @@
-import os
 import datetime
-import sys
 import logging
-import yaml
 
 
 from argparse import ArgumentParser, SUPPRESS
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
-from typing import Union
 
 from pathlib import Path
 
-from dspp_reader.sqmle.sqmle import SQMLE
-from dspp_reader.tessw4c import TESSW4C
 
 __version__ = version('dspp-reader')
 
@@ -120,7 +114,7 @@ def get_args(device_type, args=None, has_upd=False):
     parser.add_argument('--device-ip', action='store', dest='device_ip', type=str, default=SUPPRESS, help='Device IP address')
     parser.add_argument('--device-port', action='store', dest='device_port', type=int, default=SUPPRESS, help='Device TCP port')
     if has_upd:
-        parser.add_argument('--use-udp', action='store_true', dest='use_udp', help='Read device by subscribing to an UDP port')
+        parser.add_argument('--use-udp', action='store_true', dest='use_udp', default=False, help='Read device by subscribing to an UDP port')
         parser.add_argument('--udp-bind-ip', action='store', dest='udp_bind_ip', type=str, default=SUPPRESS, help='IP address to bind to')
         parser.add_argument('--udp-port', action='store', dest='udp_port', type=int, default=SUPPRESS,help="UDP port to listen on")
     if device_type in ['sqm-le']:
@@ -143,44 +137,3 @@ def get_args(device_type, args=None, has_upd=False):
         parser.print_help()
         exit(1)
     return args
-
-reader_registry = {
-    "sqm-le": SQMLE,
-    "tess-w4c": TESSW4C
-}
-
-def read_device(device_type:str, config_fields_default: dict, args=None):
-    args = get_args(device_type=device_type, args=args)
-
-    if args.config_file_example:
-        print("# Add this to a .yaml file, reference it later with --config-file <file_name>.yaml")
-        print(yaml.dump(config_fields_default, default_flow_style=False, sort_keys=False))
-        sys.exit(0)
-
-    site_config = {}
-    if 'config_file' in args.__dict__.keys() and os.path.isfile(args.config_file):
-        with open(args.config_file, "r") as f:
-            site_config = yaml.safe_load(f) or {}
-
-    config = {"device_type": 'sqmle'}
-    for field in config_fields_default.keys():
-        if field not in args.__dict__:
-            config[field] = site_config.get(field)
-        else:
-            config[field] = getattr(args, field)
-
-    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"])
-    logger = logging.getLogger()
-    logger.info(f"Starting {device_type.upper()} reader, Version: {__version__}")
-
-    logger.debug(f"Using the following configuration:\n{yaml.dump(config, default_flow_style=False, sort_keys=False)}")
-
-    cls = reader_registry[device_type]
-
-    try:
-        photometer_reader = cls(**config)
-        photometer_reader()
-    except KeyboardInterrupt:
-        print("\n")
-        logger.info(f"Exiting {device_type.upper()} reader on user request, Version: {__version__}")
-        sys.exit(0)
