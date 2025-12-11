@@ -1,16 +1,22 @@
 import os
 import datetime
+import sys
 import logging
-import tzlocal
+import yaml
 
 
 from argparse import ArgumentParser, SUPPRESS
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
+from typing import Union
 
 from pathlib import Path
 
+from dspp_reader.sqmle.sqmle import SQMLE
+from dspp_reader.tessw4c import TESSW4C
+
 __version__ = version('dspp-reader')
+
 
 class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):
     """Custom log filename handler with name rotation"""
@@ -137,3 +143,44 @@ def get_args(device_type, args=None, has_upd=False):
         parser.print_help()
         exit(1)
     return args
+
+reader_registry = {
+    "sqm-le": SQMLE,
+    "tess-w4c": TESSW4C
+}
+
+def read_device(device_type:str, config_fields_default: dict, args=None):
+    args = get_args(device_type=device_type, args=args)
+
+    if args.config_file_example:
+        print("# Add this to a .yaml file, reference it later with --config-file <file_name>.yaml")
+        print(yaml.dump(config_fields_default, default_flow_style=False, sort_keys=False))
+        sys.exit(0)
+
+    site_config = {}
+    if 'config_file' in args.__dict__.keys() and os.path.isfile(args.config_file):
+        with open(args.config_file, "r") as f:
+            site_config = yaml.safe_load(f) or {}
+
+    config = {"device_type": 'sqmle'}
+    for field in config_fields_default.keys():
+        if field not in args.__dict__:
+            config[field] = site_config.get(field)
+        else:
+            config[field] = getattr(args, field)
+
+    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"])
+    logger = logging.getLogger()
+    logger.info(f"Starting {device_type.upper()} reader, Version: {__version__}")
+
+    logger.debug(f"Using the following configuration:\n{yaml.dump(config, default_flow_style=False, sort_keys=False)}")
+
+    cls = reader_registry[device_type]
+
+    try:
+        photometer_reader = cls(**config)
+        photometer_reader()
+    except KeyboardInterrupt:
+        print("\n")
+        logger.info(f"Exiting {device_type.upper()} reader on user request, Version: {__version__}")
+        sys.exit(0)

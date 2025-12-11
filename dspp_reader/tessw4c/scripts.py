@@ -46,7 +46,7 @@ def read_tessw4c(args=None):
 
 
     site_config = {}
-    if args.config_file and os.path.isfile(args.config_file):
+    if 'config_file' in args.__dict__.keys() and os.path.isfile(args.config_file):
         with open(args.config_file, 'r') as f:
             site_config = yaml.safe_load(f) or {}
 
@@ -56,6 +56,7 @@ def read_tessw4c(args=None):
             config[field] = site_config.get(field)
         else:
             config[field] = getattr(args, field)
+    print(config)
 
     setup_logging(debug=args.debug, device_type=config['device_type'], device_id=config['device_id'])
     logger = logging.getLogger()

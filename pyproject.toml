@@ -60,8 +60,8 @@ dependencies = [
 "Source" = "https://github.com/dark-sky-protection/dspp_reader"
 
 [project.scripts]
-read_sqmle = "dspp_reader.sqmle.scripts:read_sqmle"
-read_tessw4c = "dspp_reader.tessw4c.scripts:read_tessw4c"
+read-sqmle = "dspp_reader.sqmle.scripts:read_sqmle"
+read-tessw4c = "dspp_reader.tessw4c.scripts:read_tessw4c"
 
 
 [tool.setuptools]

@@ -47,7 +47,7 @@ def read_sqmle(args=None):
         sys.exit(0)
 
     site_config = {}
-    if args.config_file and os.path.isfile(args.config_file):
+    if 'config_file' in args.__dict__.keys() and os.path.isfile(args.config_file):
         with open(args.config_file, "r") as f:
             site_config = yaml.safe_load(f) or {}
 

@@ -24,20 +24,29 @@ class TESSW4C(object):
                  site_latitude: str = '',
                  site_longitude: str = '',
                  site_elevation: str = '',
+                 sun_altitude: float = -10,
                  device_type: str = 'tessw4c',
                  device_id: str = '',
-                 device_altitude: int = 0,
-                 device_azimuth: int = 0,
+                 device_altitude: float = 0,
+                 device_azimuth: float = 0,
                  device_ip: str = '0.0.0.0',
                  device_port: int = 23,
                  use_udp: bool = False,
                  udp_bind_ip: str='0.0.0.0',
                  udp_port: int =2255,
+                 read_all_the_time: bool = False,
                  save_to_file: bool=True,
                  save_to_database: bool=False,
                  post_to_api: bool=False,
                  save_files_to: Path = os.getcwd(),
                  file_format: str = 'tsv'):
+        self.site_id = site_id
+        self.site_name = site_name
+        self.site_timezone = site_timezone
+        self.site_latitude = site_latitude
+        self.site_longitude = site_longitude
+        self.site_elevation = site_elevation
+        self.sun_altitude = sun_altitude
         self.use_udp = use_udp
         self.udp_bind_ip = udp_bind_ip
         self.udp_port = udp_port
@@ -47,12 +56,7 @@ class TESSW4C(object):
         self.device_azimuth = device_azimuth
         self.device_ip = device_ip
         self.device_port = device_port
-        self.site_id = site_id
-        self.site_name = site_name
-        self.site_timezone = site_timezone
-        self.site_latitude = site_latitude
-        self.site_longitude = site_longitude
-        self.site_elevation = site_elevation
+        self.read_all_the_time = read_all_the_time
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
         self.post_to_api = post_to_api
@@ -144,8 +148,8 @@ class TESSW4C(object):
             last_message_id = None
             while True:
                 if self.device and self.device.site:
-                    next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range()
-                    if time_to_next_end > time_to_next_start:
+                    next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
+                    if time_to_next_end > time_to_next_start and not self.read_all_the_time:
                         logger.debug(f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
                         hours = int(time_to_next_start.sec // 3600)
                         minutes = int((time_to_next_start.sec % 3600) // 60)
