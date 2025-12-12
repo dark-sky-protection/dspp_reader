@@ -254,7 +254,7 @@ class SQMLE(object):
             try:
                 logger.debug(f"Creating socket connection for {self.device.type} {self.device.serial_id}")
                 with socket.create_connection((self.device.ip, self.device.port), timeout=5) as sock:
-                    logger.info(f"Created socket connection for {self.device.type} {self.device.serial_id}")
+                    logger.debug(f"Created socket connection for {self.device.type} {self.device.serial_id}")
                     sock.sendall(command)
                     sleep(1)
                     data = sock.recv(1024)
