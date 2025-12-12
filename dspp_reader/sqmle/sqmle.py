@@ -2,6 +2,7 @@ import astropy.units as u
 import datetime
 import os
 import re
+import pandas as pd
 import socket
 import logging
 import sys
@@ -39,7 +40,7 @@ class SQMLE(object):
                  device_port=10001,
                  device_window_correction:float = 0,
                  number_of_reads=3,
-                 reads_spacing=1,
+                 reads_spacing=5,
                  reads_frequency=30,
                  read_all_the_time:bool = False,
                  save_to_file=True,
@@ -114,24 +115,24 @@ class SQMLE(object):
         else:
             logger.error("Not enough information to define device")
 
-        self.socket = None
-        if self.device:
-            while not self.socket:
-                try:
-                    logger.debug(f"Creating socket connection for {self.device.type} {self.device.serial_id}")
-                    self.socket = socket.create_connection((self.device.ip, self.device.port), timeout=5)
-                    logger.info(f"Created socket connection for {self.device.type} {self.device.serial_id}")
-                except OSError as e:
-                    timeout = 20
-                    print(
-                        f"\r{datetime.datetime.now().astimezone()}: Unable to connect to {self.device.serial_id} at {self.device.ip}:{self.device.port}: {e}")
-                    for i in range(1, timeout + 1, 1):
-                        print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
-                        sleep(1)
-        else:
-            logger.error(f"A device is needed to be able to continue")
-            logger.info(f"Use the argument  --help for more information")
-            sys.exit(1)
+        # self.socket = None
+        # if self.device:
+        #     while not self.socket:
+        #         try:
+        #             logger.debug(f"Creating socket connection for {self.device.type} {self.device.serial_id}")
+        #             self.socket = socket.create_connection((self.device.ip, self.device.port), timeout=5)
+        #             logger.info(f"Created socket connection for {self.device.type} {self.device.serial_id}")
+        #         except OSError as e:
+        #             timeout = 20
+        #             print(
+        #                 f"\r{datetime.datetime.now().astimezone()}: Unable to connect to {self.device.serial_id} at {self.device.ip}:{self.device.port}: {e}")
+        #             for i in range(1, timeout + 1, 1):
+        #                 print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
+        #                 sleep(1)
+        # else:
+        #     logger.error(f"A device is needed to be able to continue")
+        #     logger.info(f"Use the argument  --help for more information")
+        #     sys.exit(1)
 
         if self.save_to_file:
             if not os.path.exists(self.save_files_to):
@@ -146,7 +147,7 @@ class SQMLE(object):
     def __call__(self):
         try:
             while True:
-                if self.device and self.socket:
+                if self.device:
                     if self.device.site:
                         next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
                         if time_to_next_end > time_to_next_start and not self.read_all_the_time:
@@ -157,7 +158,7 @@ class SQMLE(object):
                             seconds = int(time_to_next_start.sec % 60)
 
                             try:
-                                self._send_command(command=UNIT_INFORMATION_REQUEST, sock=self.socket)
+                                self._send_command(command=UNIT_INFORMATION_REQUEST)
                                 message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                                 if logger.getEffectiveLevel() == logging.DEBUG:
                                     logger.debug(message)
@@ -174,77 +175,111 @@ class SQMLE(object):
                     else:
                         logger.warning(f"No device has been defined, this program will continue reading continuously.")
 
-                    self.timestamp = datetime.datetime.now(datetime.UTC)
-                    data = {}
-                    measurements = []
-                    try:
-                        for read in range(1, self.number_of_reads + 1, 1):
-                            logger.debug(f"Reading {read} of {self.number_of_reads}...")
-                            data = self._send_command(command=READ_WITH_SERIAL_NUMBER, sock=self.socket)
-                            logger.debug(f"Response: {data}")
+                    data = self.get_data_point()
 
-                            parsed_data = self._parse_data(data=data, command=READ_WITH_SERIAL_NUMBER)
-
-                            measurements.append(parsed_data)
-                            if self.device.serial_id:
-                                if self.device.serial_id != parsed_data['serial_number']:
-                                    logger.warning(
-                                        f"Serial number mismatch: {self.device.serial_id} != {parsed_data['serial_number']}")
-                            sleep(self.reads_spacing)
-
-                    except IndexError as e:
-                        logger.error(f"Error parsing data: Key error: {e}", exc_info=logger.getEffectiveLevel() == logging.DEBUG)
-                        sleep(self.reads_spacing)
-                        continue
-                    if len(measurements) == 0:
-                        logger.warning(f"No data has been read, this program will continue.")
-                        continue
-                    if len(measurements) == 1:
-                        data = measurements[0]
-                    elif len(measurements) > 1:
-                        raise NotImplementedError("Averaging data is not yet implemented. Use --number-of-reads 1")
-
-                    corrected_data = self.__apply_window_correction(data=data)
-
-                    augmented_data = augment_data(data=corrected_data, timestamp=self.timestamp, device=self.device)
+                    if not any([self.save_to_file, self.save_to_database, self.post_to_api]):
+                        logger.warning(f"Data will not be stored in any way...")
+                        sleep(3)
 
                     if self.save_to_file:
-                        self._write_to_txt(data=augmented_data)
+                        self._write_to_txt(data=data)
                     if self.save_to_database:
                         self._write_to_database()
                     if self.post_to_api:
                         self._post_to_api()
 
                     last_datapoint = datetime.datetime.now(datetime.UTC)
-
+                    logger.info(f"Last Datapoint recorded at {last_datapoint.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {last_datapoint.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}.")
                     for i in range(self.reads_frequency):
-                        print(f"\rLast Datapoint recorded at {last_datapoint.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {last_datapoint.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}. Next read in {self.reads_frequency - i} seconds...", end="", flush=True)
+                        print(f"\r\rNext read in {self.reads_frequency - i} seconds...", end="", flush=True)
                         sleep(1)
+                    print("")
                 else:
                     if not self.device:
                         logger.error(f"A device is needed to be able to continue")
-                    if not self.socket:
-                        logger.error(f"It seems that the connection to the device is unavailable")
+                    # if not self.socket:
+                    #     logger.error(f"It seems that the connection to the device is unavailable")
         except KeyboardInterrupt:
             logger.info("SQM-LE stopped by user")
         except ConnectionRefusedError:
             logger.info("SQM-LE connection refused")
-        finally:
-            if self.socket:
-                self.socket.close()
+        # finally:
+        #     if self.socket:
+        #         self.socket.close()
 
-    def _send_command(self, command, sock):
-        sock.sendall(command)
-        data = sock.recv(1024)
-        return data.decode()
+    def get_data_point(self):
+        timestamp = datetime.datetime.now(datetime.UTC)
+        data = {}
+        measurements = []
+        while len(measurements) < self.number_of_reads:
+            try:
+
+                logger.debug(f"Reading {len(measurements) + 1} of {self.number_of_reads} samples...")
+                data = self._send_command(command=READ_WITH_SERIAL_NUMBER)
+                logger.debug(f"Response: {data}")
+
+                parsed_data = self._parse_data(data=data, command=READ_WITH_SERIAL_NUMBER)
+
+                corrected_data = self.__apply_window_correction(data=parsed_data)
+
+                measurements.append(corrected_data)
+                if self.device.serial_id:
+                    if self.device.serial_id != parsed_data['serial_number']:
+                        logger.warning(
+                            f"Serial number mismatch: {self.device.serial_id} != {parsed_data['serial_number']}")
+                sleep(self.reads_spacing)
+
+            except IndexError as e:
+                logger.error(f"Error parsing data: Key error: {e}", exc_info=logger.getEffectiveLevel() == logging.DEBUG)
+                sleep(self.reads_spacing)
+                continue
+            except ValueError as e:
+                logger.error(f"Error parsing data: ValueError: {e}", exc_info=logger.getEffectiveLevel() == logging.DEBUG)
+                sleep(self.reads_spacing)
+                continue
+
+
+        if len(measurements) == 1:
+            data = measurements[0]
+        elif len(measurements) > 1:
+            data = self.__average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
+            # raise NotImplementedError("Averaging data is not yet implemented. Use --number-of-reads 1")
+
+        augmented_data = augment_data(data=data, timestamp=timestamp, device=self.device)
+
+        return augmented_data
+
+    def _send_command(self, command):
+        while True:
+            try:
+                logger.debug(f"Creating socket connection for {self.device.type} {self.device.serial_id}")
+                with socket.create_connection((self.device.ip, self.device.port), timeout=5) as sock:
+                    logger.info(f"Created socket connection for {self.device.type} {self.device.serial_id}")
+                    sock.sendall(command)
+                    sleep(1)
+                    data = sock.recv(1024)
+                    return data.decode()
+            except OSError as e:
+                timeout = 20
+                logger.error(
+                    f"{datetime.datetime.now().astimezone()}: Unable to connect to {self.device.serial_id} at {self.device.ip}:{self.device.port}: {e}")
+                for i in range(1, timeout + 1, 1):
+                    print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
+                    sleep(1)
+                print("")
+
 
     def __apply_window_correction(self, data):
         data['magnitude'] = data['magnitude'] + self.device_window_correction * u.mag
         return data
 
     def _parse_data(self, data, command):
-        data = data.split(',')
+        if len(data) == 0:
+            raise ValueError("No data has been read")
+        data = data.strip().split(',')
         if command == READ:
+            if len(data) != 6:
+                raise ValueError(f"The command {command.decode().strip()} expects 6 values, but got {len(data)}")
             return {
                 'type': data[0],
                 'magnitude' : float(re.sub('m', '', data[1])) * u.mag,
@@ -254,16 +289,30 @@ class SQMLE(object):
                 'temperature' : float(re.sub('C', '', data[5])) * u.C,
             }
         elif command == READ_WITH_SERIAL_NUMBER:
+            if len(data) != 7:
+                raise ValueError(f"The command {command.decode().strip()} expects 7 values, but got {len(data)}")
+            response_type = data[0]
+            if response_type != 'r':
+                raise ValueError(f"Invalid response type {response_type}, the command {command.decode().strip()} expected a type `r`")
+            magnitude = float(re.sub('m', '', data[1])) * u.mag
+            frequency = float(re.sub('Hz', '', data[2])) * u.Hz
+            period_count = int(re.sub('c', '', data[3])) * u.count
+            period_seconds = float(re.sub('s', '', data[4])) * u.second
+            temperature = float(re.sub('C', '', data[5])) * u.C
+            serial_number = str(int(data[6]))
+
             return {
-                'type': data[0],
-                'magnitude' : float(re.sub('m', '', data[1])) * u.mag,
-                'frequency' : float(re.sub('Hz', '', data[2])) * u.Hz,
-                'period_count' : int(re.sub('c', '', data[3])) * u.count,
-                'period_seconds' : float(re.sub('s', '', data[4])) * u.second,
-                'temperature' : float(re.sub('C', '', data[5])) * u.C,
-                'serial_number' : str(int(data[6])),
+                'type': response_type,
+                'magnitude' : magnitude,
+                'frequency' : frequency,
+                'period_count' : period_count,
+                'period_seconds' : period_seconds,
+                'temperature' : temperature,
+                'serial_number' : serial_number,
             }
         elif command == REQUEST_CALIBRATION_INFORMATION:
+            if len(data) != 6:
+                raise ValueError(f"The command {command.decode().strip()} expects 6 values, but got {len(data)}")
             return {
                 'type': data[0],
                 'magnitude_offset_calibration': float(data[1]),
@@ -273,6 +322,8 @@ class SQMLE(object):
                 'temperature_dark_calibration': float(data[5]),
             }
         elif command == UNIT_INFORMATION_REQUEST:
+            if len(data) != 5:
+                raise ValueError(f"The command {command.decode().strip()} expects 5 values, but got {len(data)}")
             return {
                 'type': data[0],
                 'protocol_number': data[1],
@@ -281,10 +332,55 @@ class SQMLE(object):
                 'serial_number': data[4],
             }
         else:
-            logger.error(f"Unknown command: {command}")
+            logger.error(f"Unknown command: {command.decode().strip()}")
             return data
 
+    def __average_data(self, measurements, command):
+        if len(measurements) == 0:
+            raise ValueError("No data has been read")
+        else:
+            logger.debug(f"Average data from {len(measurements)} measurements")
+        if command not in [READ, READ_WITH_SERIAL_NUMBER]:
+            raise NotImplementedError(f"Command {command.decode().strip()} does not support value averaging")
 
+        df = pd.DataFrame(measurements)
+        print(df)
+        response_type = df['type'].unique()
+        if len(response_type) != 1:
+            raise ValueError(
+                f"Data is not clean, received multiple data type: {' '.join(response_type)}")
+        # Guille should work here
+        magnitude = df['magnitude'].mean()
+        frequency = df['frequency'].mean()
+        period_count = df['period_count'].mean()
+        period_seconds = df['period_seconds'].mean()
+        temperature = df['temperature'].mean()
+
+        if command == READ:
+            return {
+                'type': response_type[0],
+                'magnitude': magnitude,
+                'frequency': frequency,
+                'period_count': period_count,
+                'period_seconds': period_seconds,
+                'temperature': temperature,
+            }
+        elif command == READ_WITH_SERIAL_NUMBER:
+            serial_number = df['serial_number'].unique()
+            if len(serial_number) != 1:
+                raise ValueError(f"Data is not clean, received multiple serial number: {' '.join(serial_number)}")
+
+            return {
+                'type': response_type[0],
+                'magnitude': magnitude,
+                'frequency': frequency,
+                'period_count': period_count,
+                'period_seconds': period_seconds,
+                'temperature': temperature,
+                'serial_number': serial_number[0],
+            }
+        else:
+            raise ValueError(f"Unknown command: {command.decode().strip()}")
 
     def __get_header(self, data, filename):
         columns = []
@@ -318,10 +414,10 @@ class SQMLE(object):
         data_line = self.__get_line_for_plain_text(data=data)
         with open(filename, "a") as f:
             f.write(data_line)
-            logger.debug(f"Data written to {filename}")
+            logger.info(f"Data point written to {filename}")
 
-    def _write_to_database(self):
+    def _write_to_database(self, data):
         pass
 
-    def _post_to_api(self):
+    def _post_to_api(self, data):
         pass
