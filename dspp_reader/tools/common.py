@@ -49,7 +49,7 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
 
         logger.info(f"Use --help for more information. Pay attention to --config-file and --config-file-example")
         sys.exit(1)
-    logger.debug(f"Using the following configuration:\n{yaml.dump(config, default_flow_style=False, sort_keys=False)}")
+    logger.info(f"Using the following configuration:\n\n\t{re.sub('\n', '\n\t', yaml.dump(config, sort_keys=False))}")
 
     cls = reader_registry[device_type]
 
