@@ -49,6 +49,7 @@ dependencies = [
     "requests",
     "sphinx",
     "sphinxcontrib-napoleon",
+    "pandas",
     "pydata-sphinx-theme",
     "pyyaml",
     "tzlocal"

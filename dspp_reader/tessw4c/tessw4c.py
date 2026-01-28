@@ -197,7 +197,7 @@ class TESSW4C(object):
                                 print(f"\r{message}", end="", flush=True)
                             last_message_id = message_id
                         else:
-                            logger.debug(f"Message skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} ")
+                            logger.debug(f"Message id {message_id} skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} because it has the same id as previous message ({last_message_id}).)")
                             continue
                     except TimeoutError:
                         logger.error(f"Socket timed out")
