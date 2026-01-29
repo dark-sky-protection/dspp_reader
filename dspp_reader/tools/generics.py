@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-
+from astropy.units import Quantity
 from argparse import ArgumentParser, SUPPRESS
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
@@ -12,7 +12,7 @@ from pathlib import Path
 __version__ = version('dspp-reader')
 
 
-class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):
+class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cover
     """Custom log filename handler with name rotation"""
     def __init__(self, device_type, device_id, *args, **kwargs):
         self.device_type = device_type
@@ -23,10 +23,22 @@ class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):
         date_str = datetime.datetime.now().strftime('%Y%m%d')
         return f"{date_str}_{self.device_type}_{self.device_id}.log"
 
+def clean_data(obj):
+    """Recursively convert Quantities to plain numbers inside nested structures."""
+    if isinstance(obj, Quantity):
+        return obj.value
+    elif isinstance(obj, dict):
+        return {k: clean_data(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return type(obj)(clean_data(v) for v in obj)
+    else:
+        return obj
+
 def augment_data(data, timestamp, device=None):
     data['timestamp'] = timestamp.isoformat() # UT, buscar formato con menos decimales si no formatear a mano
     data['localtime'] = timestamp.astimezone().isoformat() # Local Time with UT Offset
     if device:
+        data['device'] = device.type
         data['altitude'] = device.altitude
         data['azimuth'] = device.azimuth
         if device.site:
@@ -97,7 +109,7 @@ def get_filename(save_files_to: Path, device_name:str, device_type: str, file_fo
         date_string = now_local.strftime('%Y%m%d')
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
-def get_args(device_type, args=None, has_upd=False):
+def get_args(device_type, args=None, has_upd=False): # pragma: no cover
     parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
     parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')
