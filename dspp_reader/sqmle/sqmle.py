@@ -1,3 +1,5 @@
+import json
+
 import astropy.units as u
 import datetime
 import os
@@ -7,13 +9,16 @@ import socket
 import logging
 import sys
 
+import requests
+
 from astropy.units import Quantity
 from pathlib import Path
+from requests.exceptions import ConnectionError
 from time import sleep
 from zoneinfo import ZoneInfo
 
 from dspp_reader.tools import Device, Site
-from dspp_reader.tools.generics import augment_data, get_filename
+from dspp_reader.tools.generics import augment_data, clean_data, get_filename
 
 logger = logging.getLogger()
 
@@ -115,25 +120,6 @@ class SQMLE(object):
         else:
             logger.error("Not enough information to define device")
 
-        # self.socket = None
-        # if self.device:
-        #     while not self.socket:
-        #         try:
-        #             logger.debug(f"Creating socket connection for {self.device.type} {self.device.serial_id}")
-        #             self.socket = socket.create_connection((self.device.ip, self.device.port), timeout=5)
-        #             logger.info(f"Created socket connection for {self.device.type} {self.device.serial_id}")
-        #         except OSError as e:
-        #             timeout = 20
-        #             print(
-        #                 f"\r{datetime.datetime.now().astimezone()}: Unable to connect to {self.device.serial_id} at {self.device.ip}:{self.device.port}: {e}")
-        #             for i in range(1, timeout + 1, 1):
-        #                 print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
-        #                 sleep(1)
-        # else:
-        #     logger.error(f"A device is needed to be able to continue")
-        #     logger.info(f"Use the argument  --help for more information")
-        #     sys.exit(1)
-
         if self.save_to_file:
             if not os.path.exists(self.save_files_to):
                 try:
@@ -184,9 +170,9 @@ class SQMLE(object):
                     if self.save_to_file:
                         self._write_to_txt(data=data)
                     if self.save_to_database:
-                        self._write_to_database()
+                        self._write_to_database(data=data)
                     if self.post_to_api:
-                        self._post_to_api()
+                        self._post_to_api(data=data)
 
                     last_datapoint = datetime.datetime.now(datetime.UTC)
                     logger.info(f"Last Datapoint recorded at {last_datapoint.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {last_datapoint.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}.")
@@ -197,15 +183,10 @@ class SQMLE(object):
                 else:
                     if not self.device:
                         logger.error(f"A device is needed to be able to continue")
-                    # if not self.socket:
-                    #     logger.error(f"It seems that the connection to the device is unavailable")
         except KeyboardInterrupt:
             logger.info("SQM-LE stopped by user")
         except ConnectionRefusedError:
             logger.info("SQM-LE connection refused")
-        # finally:
-        #     if self.socket:
-        #         self.socket.close()
 
     def get_data_point(self):
         timestamp = datetime.datetime.now(datetime.UTC)
@@ -243,7 +224,6 @@ class SQMLE(object):
             data = measurements[0]
         elif len(measurements) > 1:
             data = self.__average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
-            # raise NotImplementedError("Averaging data is not yet implemented. Use --number-of-reads 1")
 
         augmented_data = augment_data(data=data, timestamp=timestamp, device=self.device)
 
@@ -420,4 +400,52 @@ class SQMLE(object):
         pass
 
     def _post_to_api(self, data):
-        pass
+        cleaned_data = clean_data(data)
+        reorganized_data = self.__organize_for_api(data=cleaned_data)
+        print(json.dumps(reorganized_data, indent=4))
+
+        max_failed_attempts = 5
+        failed_attempts = 0
+        while failed_attempts <= max_failed_attempts:
+            try:
+                response = requests.post('http://localhost:8000/api/sqm-le', json=reorganized_data)
+                if response.status_code == 201:
+                    logger.info(f"Successfully created new entry in API")
+                    return
+                else:
+                    logger.error(f"Failed to create new entry in API, Status Code: {response.status_code}")
+                    failed_attempts += 1
+                    sleep(1)
+            except ConnectionError as e:
+                logger.error(f"Failed to create new entry in API, Error {e}")
+                failed_attempts += 1
+                sleep(1)
+
+    def __organize_for_api(self, data):
+
+        return {
+            'point' : {
+                'type': data['type'],
+                'magnitude': data['magnitude'],
+                'frequency': data['frequency'],
+                'period_count': data['period_count'],
+                'period_seconds': data['period_seconds'],
+                'temperature': data['temperature'],
+                'timestamp': data['timestamp'],
+            },
+            'device' : {
+                'type': data['device'],
+                'serial_number': data['serial_number'],
+                'altitude': data['altitude'],
+                'azimuth': data['azimuth'],
+                'site': {
+                    'id': data['site'],
+                    'name': self.device.site.name,
+                    'latitude': data['latitude'],
+                    'longitude': data['longitude'],
+                    'elevation': data['elevation'],
+                    'timezone': data['timezone'],
+                }
+            },
+
+        }
