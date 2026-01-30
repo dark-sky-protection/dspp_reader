@@ -7,7 +7,7 @@ name = "dspp_reader"
 dynamic = ["version"]
 description = "Software for reading SQMs and TESS-W4C devices, used for measuring sky brightness."
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.13"
 license = "BSD-3-Clause"
 keywords = [
   "sqm",
