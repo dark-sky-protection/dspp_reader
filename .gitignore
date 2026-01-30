@@ -6,3 +6,4 @@ dspp_reader/version.py
 /dspp_reader.egg-info/
 **/__pycache__/
 .idea/
+build/
