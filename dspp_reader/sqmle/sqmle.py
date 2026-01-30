@@ -429,15 +429,13 @@ class SQMLE(object):
     def __organize_for_api(self, data):
 
         return {
-            'point' : {
-                'type': data['type'],
-                'magnitude': data['magnitude'],
-                'frequency': data['frequency'],
-                'period_count': data['period_count'],
-                'period_seconds': data['period_seconds'],
-                'temperature': data['temperature'],
-                'timestamp': data['timestamp'],
-            },
+            'type': data['type'],
+            'magnitude': data['magnitude'],
+            'frequency': data['frequency'],
+            'period_count': data['period_count'],
+            'period_seconds': data['period_seconds'],
+            'temperature': data['temperature'],
+            'timestamp': data['timestamp'],
             'device' : {
                 'type': data['device'],
                 'serial_number': data['serial_number'],
