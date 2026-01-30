@@ -52,6 +52,7 @@ class SQMLE(object):
                  save_to_database=False,
                  post_to_api=False,
                  save_files_to: Path = os.getcwd(),
+                 api_endpoint: str = '',
                  file_format: str = "tsv",):
         self.site_id = site_id
         self.site_name = site_name
@@ -77,6 +78,7 @@ class SQMLE(object):
         self.post_to_api = post_to_api
         self.save_files_to = Path(save_files_to)
         self.file_format = file_format
+        self.api_endpoint = api_endpoint
         self.separator = ''
         if self.file_format == "tsv":
             self.separator = "\t"
@@ -408,7 +410,7 @@ class SQMLE(object):
         failed_attempts = 0
         while failed_attempts <= max_failed_attempts:
             try:
-                response = requests.post('http://localhost:8000/api/sqm-le', json=reorganized_data)
+                response = requests.post(self.api_endpoint, json=reorganized_data)
                 if response.status_code == 201:
                     logger.info(f"Successfully created new entry in API")
                     return

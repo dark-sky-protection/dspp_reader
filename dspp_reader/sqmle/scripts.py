@@ -29,6 +29,7 @@ CONFIG_FIELDS_DEFAULT = {
     "save_to_database": False,
     "post_to_api": False,
     "save_files_to": os.getcwd(),
+    "api_endpoint": "http://localhost:8000/api/sqm-le",
     "file_format": 'tsv',
 }
 
