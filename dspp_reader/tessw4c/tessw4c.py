@@ -10,6 +10,8 @@ from time import sleep
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
+import requests
+
 from dspp_reader.tools import Site, Device
 from dspp_reader.tools.generics import augment_data, get_filename
 
@@ -39,6 +41,7 @@ class TESSW4C(object):
                  save_to_database: bool=False,
                  post_to_api: bool=False,
                  save_files_to: Path = os.getcwd(),
+                 api_endpoint: str = '',
                  file_format: str = 'tsv'):
         self.site_id = site_id
         self.site_name = site_name
@@ -65,6 +68,7 @@ class TESSW4C(object):
         self.logger_level = logger.getEffectiveLevel()
         self.separator = ' '
         self.file_format = file_format
+        self.api_endpoint = api_endpoint
         if self.file_format == 'tsv':
             self.separator = '\t'
         elif self.file_format == 'csv':
@@ -197,7 +201,7 @@ class TESSW4C(object):
                                 print(f"\r{message}", end="", flush=True)
                             last_message_id = message_id
                         else:
-                            logger.debug(f"Message skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} ")
+                            logger.debug(f"Message id {message_id} skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} because it has the same id as previous message ({last_message_id}).)")
                             continue
                     except TimeoutError:
                         logger.error(f"Socket timed out")
@@ -261,7 +265,64 @@ class TESSW4C(object):
         print(data)
 
     def _post_to_api(self, data):
-        print(json.dumps(data, indent=4))
+        organized_data = self.__organize_for_api(data=data)
+
+        max_failed_attempts = 5
+        failed_attempts = 0
+        while failed_attempts < max_failed_attempts:
+            try:
+                response = requests.post(self.api_endpoint, json=organized_data)
+                if response.status_code == 201:
+                    logger.info(f"Successfully posted data to {self.api_endpoint}")
+                    return
+                else:
+                    logger.error(f"Failed to post data to {self.api_endpoint}")
+                    failed_attempts += 1
+                    sleep(1)
+            except ConnectionError:
+                logger.error(f"Failed to connect to {self.api_endpoint}")
+                failed_attempts += 1
+                sleep(1)
+
+    def __organize_for_api(self, data):
+        return {
+            "message_id": data['udp'],
+            "timestamp": data['timestamp'],
+            "localtime": data['localtime'],
+            "photometer_1": {
+                "frequency": data["F1"]['freq'],
+                "magnitude": data["F1"]['mag'],
+                "zeropoint": data["F1"]['zp']
+            }, "photometer_2": {
+                "frequency": data["F2"]['freq'],
+                "magnitude": data["F2"]['mag'],
+                "zeropoint": data["F2"]['zp']
+            }, "photometer_3": {
+                "frequency": data["F3"]['freq'],
+                "magnitude": data["F3"]['mag'],
+                "zeropoint": data["F3"]['zp']
+            }, "photometer_4": {
+                "frequency": data["F4"]['freq'],
+                "magnitude": data["F4"]['mag'],
+                "zeropoint": data["F4"]['zp']
+            },
+            "ambient_temperature": data["tamb"],
+            "sky_temperature": data["tsky"],
+            'device': {
+                'type': data['device'],
+                'serial_number': data['serial_number'],
+                'altitude': data['altitude'],
+                'azimuth': data['azimuth'],
+                'site': {
+                    'id': data['site'],
+                    'name': self.device.site.name,
+                    'latitude': data['latitude'],
+                    'longitude': data['longitude'],
+                    'elevation': data['elevation'],
+                    'timezone': data['timezone'],
+                }
+            },
+        }
 
 
 

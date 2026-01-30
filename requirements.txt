@@ -2,6 +2,7 @@ astropy
 astroplan
 sphinx
 sphinxcontrib.napoleon
+pandas
 pydata-sphinx-theme
 tzlocal
 pyyaml

@@ -1,13 +1,6 @@
-import logging
 import os
-import sys
-import yaml
 
 from importlib.metadata import version
-from pathlib import Path
-
-from dspp_reader.tessw4c import TESSW4C
-from dspp_reader.tools import get_args, setup_logging
 
 __version__ = version("dspp-reader")
 
@@ -35,6 +28,7 @@ CONFIG_FIELDS_DEFAULT = {
     "save_to_database": False,
     "post_to_api": False,
     "save_files_to": os.getcwd(),
+    "api_endpoint": "http://localhost:8000/api/tess-w4c",
     "file_format": 'tsv',
 }
 

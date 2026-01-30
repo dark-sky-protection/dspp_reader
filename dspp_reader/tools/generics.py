@@ -1,7 +1,7 @@
 import datetime
 import logging
 
-
+from astropy.units import Quantity
 from argparse import ArgumentParser, SUPPRESS
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
@@ -12,7 +12,7 @@ from pathlib import Path
 __version__ = version('dspp-reader')
 
 
-class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):
+class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cover
     """Custom log filename handler with name rotation"""
     def __init__(self, device_type, device_id, *args, **kwargs):
         self.device_type = device_type
@@ -23,10 +23,22 @@ class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):
         date_str = datetime.datetime.now().strftime('%Y%m%d')
         return f"{date_str}_{self.device_type}_{self.device_id}.log"
 
+def clean_data(obj):
+    """Recursively convert Quantities to plain numbers inside nested structures."""
+    if isinstance(obj, Quantity):
+        return obj.value
+    elif isinstance(obj, dict):
+        return {k: clean_data(v) for k, v in obj.items()}
+    elif isinstance(obj, (list, tuple)):
+        return type(obj)(clean_data(v) for v in obj)
+    else:
+        return obj
+
 def augment_data(data, timestamp, device=None):
     data['timestamp'] = timestamp.isoformat() # UT, buscar formato con menos decimales si no formatear a mano
     data['localtime'] = timestamp.astimezone().isoformat() # Local Time with UT Offset
     if device:
+        data['device'] = device.type
         data['altitude'] = device.altitude
         data['azimuth'] = device.azimuth
         if device.site:
@@ -97,7 +109,7 @@ def get_filename(save_files_to: Path, device_name:str, device_type: str, file_fo
         date_string = now_local.strftime('%Y%m%d')
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
-def get_args(device_type, args=None, has_upd=False):
+def get_args(device_type, args=None, has_upd=False): # pragma: no cover
     parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
     parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')
@@ -107,7 +119,6 @@ def get_args(device_type, args=None, has_upd=False):
     parser.add_argument('--site-elevation', action='store', dest='site_elevation', type=int, default=SUPPRESS, help='Site elevation')
     parser.add_argument('--site-timezone', action='store', dest='site_timezone', default=SUPPRESS, help='Site timezone')
     parser.add_argument('--sun-altitude', action='store', dest='sun_altitude', type=float, default=SUPPRESS, help='Sun altitude with respect to the horizon. This defines when to start reading.')
-    # parser.add_argument('--device-type', action='store', dest='device_type', type=str, choices=['sqmle', 'tessw4c'], default=SUPPRESS, help='Device type')
     parser.add_argument('--device-id', action='store', dest='device_id', type=str, default=SUPPRESS, help='Device serial ID')
     parser.add_argument('--device-altitude', action='store', dest='device_altitude', type=float, default=SUPPRESS, help='Device altitude')
     parser.add_argument('--device-azimuth', action='store', dest='device_azimuth', type=float, default=SUPPRESS, help='Device azimuth')
@@ -126,6 +137,7 @@ def get_args(device_type, args=None, has_upd=False):
     parser.add_argument('--save-to-database', action='store_true', dest='save_to_database', help="Save to a database")
     parser.add_argument('--post-to-api', action='store_true', dest='post_to_api', help="Send data through a POST request to a REST API")
     parser.add_argument('--save-files-to', action='store', dest='save_files_to', default=SUPPRESS, help="Destination path to save files")
+    parser.add_argument('--api-endpoint', action='store', dest='api_endpoint', type=str, default=SUPPRESS, help='API endpoint')
     parser.add_argument('--file-format', action='store', dest='file_format', choices=['tsv', 'csv', 'txt'], default=SUPPRESS, help='File format to use')
     parser.add_argument('--config-file', action='store', dest='config_file', default=SUPPRESS, help="Configuration file full path")
     parser.add_argument('--config-file-example', action='store_true', dest='config_file_example', help="Print a configuration file example")

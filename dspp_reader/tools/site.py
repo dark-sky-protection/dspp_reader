@@ -7,7 +7,7 @@ from pytz import timezone as tz
 from astroplan import Observer
 
 class Site(object):
-    def __init__(self,id, name, latitude, longitude, elevation, timezone,):
+    def __init__(self, id, name, latitude, longitude, elevation, timezone,):
         self.id = id
         self.name = name
         self.latitude = latitude * u.deg
