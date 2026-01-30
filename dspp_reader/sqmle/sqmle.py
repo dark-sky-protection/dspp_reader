@@ -249,6 +249,9 @@ class SQMLE(object):
                     print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
                     sleep(1)
                 print("")
+            except UnicodeDecodeError as e:
+                logger.error(f"Error decoding data: {e}")
+                sleep(1)
 
 
     def __apply_window_correction(self, data):
