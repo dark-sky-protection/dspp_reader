@@ -138,6 +138,7 @@ def get_args(device_type, args=None, has_upd=False): # pragma: no cover
     parser.add_argument('--post-to-api', action='store_true', dest='post_to_api', help="Send data through a POST request to a REST API")
     parser.add_argument('--save-files-to', action='store', dest='save_files_to', default=SUPPRESS, help="Destination path to save files")
     parser.add_argument('--api-endpoint', action='store', dest='api_endpoint', type=str, default=SUPPRESS, help='API endpoint')
+    parser.add_argument('--api-token', action='store', dest='api_token', type=str, default=SUPPRESS, help='API Token')
     parser.add_argument('--file-format', action='store', dest='file_format', choices=['tsv', 'csv', 'txt'], default=SUPPRESS, help='File format to use')
     parser.add_argument('--config-file', action='store', dest='config_file', default=SUPPRESS, help="Configuration file full path")
     parser.add_argument('--config-file-example', action='store_true', dest='config_file_example', help="Print a configuration file example")

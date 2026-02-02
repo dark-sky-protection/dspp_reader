@@ -42,6 +42,7 @@ class TESSW4C(object):
                  post_to_api: bool=False,
                  save_files_to: Path = os.getcwd(),
                  api_endpoint: str = '',
+                 api_token: str = '',
                  file_format: str = 'tsv'):
         self.site_id = site_id
         self.site_name = site_name
@@ -69,6 +70,7 @@ class TESSW4C(object):
         self.separator = ' '
         self.file_format = file_format
         self.api_endpoint = api_endpoint
+        self.api_token = api_token
         if self.file_format == 'tsv':
             self.separator = '\t'
         elif self.file_format == 'csv':
@@ -271,7 +273,14 @@ class TESSW4C(object):
         failed_attempts = 0
         while failed_attempts < max_failed_attempts:
             try:
-                response = requests.post(self.api_endpoint, json=organized_data)
+                response = requests.post(
+                    self.api_endpoint,
+                    json=organized_data,
+                    headers={
+                        'Authorization': f"Token {self.api_token}",
+                        'Content-Type': 'application/json'
+                    }
+                )
                 if response.status_code == 201:
                     logger.info(f"Successfully posted data to {self.api_endpoint}")
                     return
