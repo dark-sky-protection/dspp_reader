@@ -53,6 +53,7 @@ class SQMLE(object):
                  post_to_api=False,
                  save_files_to: Path = os.getcwd(),
                  api_endpoint: str = '',
+                 api_token: str = '',
                  file_format: str = "tsv",):
         self.site_id = site_id
         self.site_name = site_name
@@ -79,6 +80,7 @@ class SQMLE(object):
         self.save_files_to = Path(save_files_to)
         self.file_format = file_format
         self.api_endpoint = api_endpoint
+        self.api_token = api_token
         self.separator = ''
         if self.file_format == "tsv":
             self.separator = "\t"
@@ -413,7 +415,14 @@ class SQMLE(object):
         failed_attempts = 0
         while failed_attempts <= max_failed_attempts:
             try:
-                response = requests.post(self.api_endpoint, json=reorganized_data)
+                response = requests.post(
+                    self.api_endpoint,
+                    json=reorganized_data,
+                    headers={
+                        'Authorization': f"Token {self.api_token}",
+                        'Content-Type': 'application/json'
+                    }
+                )
                 if response.status_code == 201:
                     logger.info(f"Successfully created new entry in API")
                     return
