@@ -39,6 +39,7 @@ def augment_data(data, timestamp, device=None):
     data['localtime'] = timestamp.astimezone().isoformat() # Local Time with UT Offset
     if device:
         data['device'] = device.type
+        data['serial_number'] = device.serial_id
         data['altitude'] = device.altitude
         data['azimuth'] = device.azimuth
         if device.site:
