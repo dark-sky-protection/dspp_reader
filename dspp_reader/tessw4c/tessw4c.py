@@ -13,7 +13,7 @@ from zoneinfo import ZoneInfo
 import requests
 
 from dspp_reader.tools import Site, Device
-from dspp_reader.tools.generics import augment_data, get_filename
+from dspp_reader.tools.generics import augment_data, get_filename, clean_data
 
 logger = logging.getLogger(__name__)
 
@@ -267,6 +267,7 @@ class TESSW4C(object):
         print(data)
 
     def _post_to_api(self, data):
+        data = clean_data(data)
         organized_data = self.__organize_for_api(data=data)
 
         max_failed_attempts = 5
