@@ -36,9 +36,7 @@ device_altitude: 45
 device_azimuth: 0
 device_ip: 0.0.0.0
 device_port: 32
-use_udp: false
-udp_bind_ip: 0.0.0.0
-udp_port: 2255
+reads_frequency: 30
 read_all_the_time: false
 save_to_file: true
 save_to_database: false
