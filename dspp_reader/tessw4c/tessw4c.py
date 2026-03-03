@@ -33,6 +33,7 @@ class TESSW4C(object):
                  device_azimuth: float = 0,
                  device_ip: str = '0.0.0.0',
                  device_port: int = 23,
+                 reads_frequency: int = 30,
                  read_all_the_time: bool = False,
                  save_to_file: bool=True,
                  save_to_database: bool=False,
@@ -54,6 +55,7 @@ class TESSW4C(object):
         self.device_azimuth = device_azimuth
         self.device_ip = device_ip
         self.device_port = device_port
+        self.reads_frequency = reads_frequency
         self.read_all_the_time = read_all_the_time
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
@@ -121,6 +123,7 @@ class TESSW4C(object):
 
 
     def __call__(self):
+
         try:
             logger.info(f"{self.device_type.upper()} started using TCP/IP")
             if self.site:
@@ -164,12 +167,26 @@ class TESSW4C(object):
                         parsed_data = json.loads(data.decode('utf-8'))
                         message_id = parsed_data['udp']
                         if message_id != last_message_id:
-                            message = f"Last data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}"
-                            if self.logger_level == logging.DEBUG:
-                                logger.debug(message)
-                            else:
-                                print(f"\r{message}", end="", flush=True)
                             last_message_id = message_id
+
+                            augmented_data = augment_data(data=parsed_data,
+                                                          timestamp=self.timestamp,
+                                                          device=self.device)
+                            if self.save_to_file:
+                                self._write_to_file(data=augmented_data)
+                            if self.save_to_database:
+                                self._write_to_database(data=augmented_data)
+                            if self.post_to_api:
+                                self._post_to_api(data=augmented_data)
+
+                            message = f"Last data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}"
+                            logger.info(message)
+
+                            for i in range(self.reads_frequency):
+                                print(f"\r\rNext read in {self.reads_frequency - i} seconds...", end="", flush=True)
+                                sleep(1)
+                            print("")
+
                         else:
                             logger.debug(f"Message id {message_id} skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} because it has the same id as previous message ({last_message_id}).)")
                             continue
@@ -182,14 +199,6 @@ class TESSW4C(object):
                     except ConnectionRefusedError as e:
                         logger.error(f"Socket error: {e}")
                         continue
-
-                augmented_data = augment_data(data=parsed_data, timestamp=self.timestamp, device=self.device)
-                if self.save_to_file:
-                    self._write_to_file(data=augmented_data)
-                if self.save_to_database:
-                    self._write_to_database(data=augmented_data)
-                if self.post_to_api:
-                    self._post_to_api(data=augmented_data)
 
         except KeyboardInterrupt:
             logger.info(f"{self.device_type.upper()} stopped by user")

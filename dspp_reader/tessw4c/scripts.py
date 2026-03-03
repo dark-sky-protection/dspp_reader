@@ -20,6 +20,7 @@ CONFIG_FIELDS_DEFAULT = {
     "device_azimuth": 0,
     "device_ip": "0.0.0.0",
     "device_port": 32,
+    "reads_frequency": 30,
     "read_all_the_time": False,
     "save_to_file": True,
     "save_to_database": False,

@@ -128,7 +128,7 @@ def get_args(device_type, args=None): # pragma: no cover
     if device_type in ['sqm-le']:
         parser.add_argument('--device-window-correction', action='store', dest='device_window_correction', type=float, default=SUPPRESS, help='If an SQM was mounted in housing with acrylic window the correction must be -0.11 mag')
         parser.add_argument('--number-of-reads', action='store', dest='number_of_reads', type=int, default=SUPPRESS, help='Number of reads to average')
-        parser.add_argument('--reads-frequency', action='store', dest='reads_frequency', type=int, default=SUPPRESS, help='How many seconds between reads')
+    parser.add_argument('--reads-frequency', action='store', dest='reads_frequency', type=int, default=SUPPRESS, help='How many seconds between reads')
     parser.add_argument('--read-all-the-time', action='store_true', dest='read_all_the_time', default=False, help='Allows to ignore the time constraints')
     parser.add_argument('--save-to-file', action='store_true', dest='save_to_file', help="Save to a plain text file")
     parser.add_argument('--save-to-database', action='store_true', dest='save_to_database', help="Save to a database")
