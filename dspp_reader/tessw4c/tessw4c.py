@@ -131,7 +131,7 @@ class TESSW4C(object):
             else:
                 logger.info(f"No site was defined or provided")
             if self.device:
-                logger.info(f"Using device type {self.device.type}  Serial ID {self.device.serial_id} configured with Altitude {self.device.altitude} and Azimuth {self.device.azimuth}")
+                logger.info(f"Using device type {self.device.type} Serial ID {self.device.serial_id} configured with Altitude {self.device.altitude} and Azimuth {self.device.azimuth}")
             last_message_id = None
             while True:
                 if self.device and self.device.site:
