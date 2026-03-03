@@ -110,7 +110,7 @@ def get_filename(save_files_to: Path, device_name:str, device_type: str, file_fo
         date_string = now_local.strftime('%Y%m%d')
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
-def get_args(device_type, args=None, has_upd=False): # pragma: no cover
+def get_args(device_type, args=None): # pragma: no cover
     parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
     parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')
@@ -125,10 +125,6 @@ def get_args(device_type, args=None, has_upd=False): # pragma: no cover
     parser.add_argument('--device-azimuth', action='store', dest='device_azimuth', type=float, default=SUPPRESS, help='Device azimuth')
     parser.add_argument('--device-ip', action='store', dest='device_ip', type=str, default=SUPPRESS, help='Device IP address')
     parser.add_argument('--device-port', action='store', dest='device_port', type=int, default=SUPPRESS, help='Device TCP port')
-    if has_upd:
-        parser.add_argument('--use-udp', action='store_true', dest='use_udp', default=False, help='Read device by subscribing to an UDP port')
-        parser.add_argument('--udp-bind-ip', action='store', dest='udp_bind_ip', type=str, default=SUPPRESS, help='IP address to bind to')
-        parser.add_argument('--udp-port', action='store', dest='udp_port', type=int, default=SUPPRESS,help="UDP port to listen on")
     if device_type in ['sqm-le']:
         parser.add_argument('--device-window-correction', action='store', dest='device_window_correction', type=float, default=SUPPRESS, help='If an SQM was mounted in housing with acrylic window the correction must be -0.11 mag')
         parser.add_argument('--number-of-reads', action='store', dest='number_of_reads', type=int, default=SUPPRESS, help='Number of reads to average')

@@ -33,9 +33,6 @@ class TESSW4C(object):
                  device_azimuth: float = 0,
                  device_ip: str = '0.0.0.0',
                  device_port: int = 23,
-                 use_udp: bool = False,
-                 udp_bind_ip: str='0.0.0.0',
-                 udp_port: int =2255,
                  read_all_the_time: bool = False,
                  save_to_file: bool=True,
                  save_to_database: bool=False,
@@ -51,9 +48,6 @@ class TESSW4C(object):
         self.site_longitude = site_longitude
         self.site_elevation = site_elevation
         self.sun_altitude = sun_altitude
-        self.use_udp = use_udp
-        self.udp_bind_ip = udp_bind_ip
-        self.udp_port = udp_port
         self.device_type = device_type
         self.device_id = device_id
         self.device_altitude = device_altitude
@@ -108,26 +102,10 @@ class TESSW4C(object):
         else:
             logger.error(f"Not enough information to define device")
 
-        self.udp_socket = None
         self.tcp_socket = None
-        if self.use_udp:
-            self.udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            self.udp_socket.bind((self.udp_bind_ip, self.udp_port))
-            logger.debug(f"{self.device_type.upper()} initialized, listening on {self.udp_bind_ip}:{self.udp_port}")
-        elif self.device:
-            while not self.tcp_socket:
-                try:
-                    logger.debug(f"Creating socket connection for {self.device.serial_id}")
-                    self.tcp_socket = socket.create_connection((self.device.ip, self.device.port), timeout=5)
-                    logger.info(f"Created socket connection for {self.device.serial_id}")
-                except OSError as e:
-                    timeout = 20
-                    print(f"\r{datetime.datetime.now().astimezone()}: Unable to connect to {self.device.serial_id} at {self.device.ip}:{self.device.port}: {e}")
-                    for i in range(1, timeout + 1, 1):
-                        print(f"\rAttempting again in {timeout - i} seconds...", end="", flush=True)
-                        sleep(1)
-        else:
-            logger.error(f"Either use_udp or provide information to define a device.")
+
+        if not self.device:
+            logger.error(f"Please provide information to define a device.")
             logger.info(f"Use the argument  --help for more information")
             sys.exit(1)
 
@@ -144,7 +122,7 @@ class TESSW4C(object):
 
     def __call__(self):
         try:
-            logger.info(f"{self.device_type.upper()} started using {'UDP' if self.use_udp else 'TCP/IP'}")
+            logger.info(f"{self.device_type.upper()} started using TCP/IP")
             if self.site:
                 logger.info(f"Using site {self.site.name} at {self.site.latitude} {self.site.longitude}")
             else:
@@ -162,19 +140,18 @@ class TESSW4C(object):
                         seconds = int(time_to_next_start.sec % 60)
 
                         try:
-                            if self.tcp_socket:
-                                self.tcp_socket.recv(1024)
+                            with socket.create_connection((self.device.ip, self.device.port)) as sock:
+                                peer_name = sock.getpeername()
+                                print(peer_name)
                             message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                             if self.logger_level == logging.DEBUG:
                                 logger.debug(message)
                             else:
                                 print(f"\r{message}", end="", flush=True)
-                        except OSError as e:
+                        except ConnectionRefusedError as e:
                             error_message = f"Socket error: {e}. The device may be unavailable."
-                            if self.logger_level == logging.DEBUG:
-                                logger.debug(error_message)
-                            else:
-                                print(f"\033[2K\r{error_message}", end="", flush=True)
+                            logger.error(error_message)
+                            sleep(5)
 
                         continue
                 else:
@@ -182,17 +159,9 @@ class TESSW4C(object):
 
                 self.timestamp = datetime.datetime.now(datetime.UTC)
 
-                if self.use_udp:
-                    data, addr = self.udp_socket.recvfrom(2048)
-                    parsed_data = json.loads(data.decode('utf-8'))
-                    device_serial = parsed_data['name']
-                    logger.info(
-                        f"{self.device_type.upper()} received message {parsed_data['udp']} at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} from ip address: {addr[0]}, device name: {self.device.serial_id if self.device else parsed_data['name']}")
-                    if self.device and (device_serial != self.device.serial_id):
-                            logger.warning(f"Provided device serial id {device_serial} does not match device retuned serial id {self.device.serial_id}")
-                else:
+                with socket.create_connection((self.device.ip, self.device.port), timeout=5) as sock:
                     try:
-                        data = self.tcp_socket.recv(1024)
+                        data = sock.recv(1024)
                         parsed_data = json.loads(data.decode('utf-8'))
                         message_id = parsed_data['udp']
                         if message_id != last_message_id:
@@ -211,6 +180,9 @@ class TESSW4C(object):
                     except JSONDecodeError as e:
                         logger.error(f"Error parsing data: {e}")
                         continue
+                    except ConnectionRefusedError as e:
+                        logger.error(f"Socket error: {e}")
+                        continue
 
                 augmented_data = augment_data(data=parsed_data, timestamp=self.timestamp, device=self.device)
                 if self.save_to_file:
@@ -222,11 +194,7 @@ class TESSW4C(object):
 
         except KeyboardInterrupt:
             logger.info(f"{self.device_type.upper()} stopped by user")
-        finally:
-            if self.udp_socket:
-                self.udp_socket.close()
-            if self.tcp_socket:
-                self.tcp_socket.close()
+
 
     def __get_header(self, data, filename):
         columns = []
@@ -338,5 +306,4 @@ class TESSW4C(object):
 
 
 if __name__ == '__main__':
-    tess = TESSW4C(use_udp=True)
-    tess()
+    pass
