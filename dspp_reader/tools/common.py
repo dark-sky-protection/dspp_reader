@@ -38,8 +38,8 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
             config[field] = getattr(args, field)
     config["device_type"] = device_type
 
-    log_dir = config.get("save_logs_to", None)
-    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"], log_dir=log_dir)
+    save_logs_to = config.get("save_logs_to", None)
+    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"], save_logs_to=save_logs_to)
     logger = logging.getLogger()
     logger.info(f"Starting {device_type.upper()} reader, Version: {__version__}")
 
