@@ -138,7 +138,7 @@ class TESSW4C(object):
                     next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
                     if time_to_next_end > time_to_next_start and not self.read_always:
                         if show_next_sunset_message:
-                            logger.info(f"Next Sunset (Sun at {self.sun_altitude} degrees from the horizon) is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                            logger.info(f"Next Sunset (Sun at {self.sun_altitude} degrees from the horizon) is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z')}")
                             show_next_sunset_message = False
                         hours = int(time_to_next_start.sec // 3600)
                         minutes = int((time_to_next_start.sec % 3600) // 60)
@@ -150,7 +150,7 @@ class TESSW4C(object):
                                 with socket.create_connection((self.device.ip, self.device.port)) as sock:
                                     peer = sock.getpeername()
                                     next_test_of_connection = last_test_of_connection + datetime.timedelta(minutes=5)
-                                    logger.info(f"Successful connection test to to {peer[0]}:{peer[1]}. Next test at {next_test_of_connection.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                                    logger.info(f"Successful connection test to to {peer[0]}:{peer[1]}. Next test at {next_test_of_connection.strftime('%Y-%m-%d %H:%M:%S %Z')}")
                             message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                             if self.logger_level == logging.DEBUG:
                                 logger.debug(message)
