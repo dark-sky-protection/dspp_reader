@@ -131,6 +131,7 @@ class TESSW4C(object):
             if self.device:
                 logger.info(f"Using device type {self.device.type} Serial ID {self.device.serial_id} configured with Altitude {self.device.altitude} and Azimuth {self.device.azimuth}")
             last_message_id = None
+            last_test_of_connection = None
             while True:
                 if self.device and self.device.site:
                     next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
@@ -141,8 +142,11 @@ class TESSW4C(object):
                         seconds = int(time_to_next_start.sec % 60)
 
                         try:
-                            with socket.create_connection((self.device.ip, self.device.port)) as sock:
-                                sock.getpeername()
+                            if last_test_of_connection is None or datetime.datetime.now(datetime.UTC) - last_test_of_connection > datetime.timedelta(minutes=5):
+                                last_test_of_connection = datetime.datetime.now(datetime.UTC)
+                                with socket.create_connection((self.device.ip, self.device.port)) as sock:
+                                    peer = sock.getpeername()
+                                    logger.info(f"Successful connection test to to {peer[0]}:{peer[1]}. Next test in 5 minutes.")
                             message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                             if self.logger_level == logging.DEBUG:
                                 logger.debug(message)
@@ -155,8 +159,7 @@ class TESSW4C(object):
                             sleep(5)
                         except TimeoutError as e:
                             logger.error(f"Socket timed out: {e}")
-                            continue
-
+                            sleep(5)
                         continue
                 else:
                     logger.warning(f"No device has been defined, this program will continue reading continuously.")
