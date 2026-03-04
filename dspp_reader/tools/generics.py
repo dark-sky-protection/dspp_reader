@@ -1,5 +1,6 @@
 import datetime
 import logging
+import time
 
 from astropy.units import Quantity
 from argparse import ArgumentParser, SUPPRESS
@@ -66,7 +67,8 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000'):
     if debug:
         logging_format = '[%(asctime)s][%(levelname)8s]: %(message)s [%(module)s.%(funcName)s:%(lineno)d]'
         logging_level = logging.DEBUG
-    logging_datefmt = "%H:%M:%S"
+    logging_datefmt = "%Y-%m-%d %H:%M:%S UTC"
+    logging.Formatter.converter = time.gmtime
 
     logging.basicConfig(format=logging_format, level=logging_level, datefmt=logging_datefmt)
 
@@ -81,7 +83,9 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000'):
         encoding='utf-8'
     )
     file_handler.setLevel(logging_level)
-    file_handler.setFormatter(logging.Formatter(logging_format))
+    formatter = logging.Formatter(logging_format, datefmt=logging_datefmt)
+    formatter.converter = time.gmtime
+    file_handler.setFormatter(formatter)
 
     logger = logging.getLogger()
     logger.addHandler(file_handler)
