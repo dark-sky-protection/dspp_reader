@@ -33,8 +33,8 @@ class TESSW4C(object):
                  device_azimuth: float = 0,
                  device_ip: str = '0.0.0.0',
                  device_port: int = 23,
-                 reads_frequency: int = 30,
-                 read_all_the_time: bool = False,
+                 delay_between_reads: int = 30,
+                 read_always: bool = False,
                  save_to_file: bool=True,
                  save_to_database: bool=False,
                  post_to_api: bool=False,
@@ -55,8 +55,8 @@ class TESSW4C(object):
         self.device_azimuth = device_azimuth
         self.device_ip = device_ip
         self.device_port = device_port
-        self.reads_frequency = reads_frequency
-        self.read_all_the_time = read_all_the_time
+        self.delay_between_reads = delay_between_reads
+        self.read_always = read_always
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
         self.post_to_api = post_to_api
@@ -136,7 +136,7 @@ class TESSW4C(object):
             while True:
                 if self.device and self.device.site:
                     next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
-                    if time_to_next_end > time_to_next_start and not self.read_all_the_time:
+                    if time_to_next_end > time_to_next_start and not self.read_always:
                         logger.debug(f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
                         hours = int(time_to_next_start.sec // 3600)
                         minutes = int((time_to_next_start.sec % 3600) // 60)
@@ -182,8 +182,8 @@ class TESSW4C(object):
                             message = f"Last data point retrieved at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {self.timestamp.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}"
                             logger.info(message)
 
-                            for i in range(self.reads_frequency):
-                                print(f"\r\rNext read in {self.reads_frequency - i} seconds...", end="", flush=True)
+                            for i in range(self.delay_between_reads):
+                                print(f"\r\rNext read in {self.delay_between_reads - i} seconds...", end="", flush=True)
                                 sleep(1)
                             print("")
 

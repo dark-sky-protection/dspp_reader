@@ -44,10 +44,10 @@ class SQMLE(object):
                  device_ip:str = None,
                  device_port=10001,
                  device_window_correction:float = 0,
-                 number_of_reads=3,
-                 reads_spacing=5,
-                 reads_frequency=30,
-                 read_all_the_time:bool = False,
+                 number_of_reads: int=3,
+                 reads_spacing: int=1,
+                 delay_between_reads=30,
+                 read_always:bool = False,
                  save_to_file=True,
                  save_to_database=False,
                  post_to_api=False,
@@ -72,8 +72,8 @@ class SQMLE(object):
 
         self.number_of_reads = number_of_reads
         self.reads_spacing = reads_spacing
-        self.reads_frequency = reads_frequency
-        self.read_all_the_time = read_all_the_time
+        self.delay_between_reads = delay_between_reads
+        self.read_always = read_always
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
         self.post_to_api = post_to_api
@@ -140,7 +140,7 @@ class SQMLE(object):
                 if self.device:
                     if self.device.site:
                         next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
-                        if time_to_next_end > time_to_next_start and not self.read_all_the_time:
+                        if time_to_next_end > time_to_next_start and not self.read_always:
                             logger.debug(
                                 f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
                             hours = int(time_to_next_start.sec // 3600)
@@ -180,8 +180,8 @@ class SQMLE(object):
 
                     last_datapoint = datetime.datetime.now(datetime.UTC)
                     logger.info(f"Last Datapoint recorded at {last_datapoint.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {last_datapoint.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}.")
-                    for i in range(self.reads_frequency):
-                        print(f"\r\rNext read in {self.reads_frequency - i} seconds...", end="", flush=True)
+                    for i in range(self.delay_between_reads):
+                        print(f"\r\rNext read in {self.delay_between_reads - i} seconds...", end="", flush=True)
                         sleep(1)
                     print("")
                 else:
