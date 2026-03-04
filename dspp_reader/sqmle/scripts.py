@@ -32,6 +32,7 @@ CONFIG_FIELDS_DEFAULT = {
     "api_endpoint": "http://localhost:8000/api/sqm-le",
     "api_token": "<get-an-appropriate-api-token>",
     "file_format": 'tsv',
+    "save_logs_to": None,
 }
 
 

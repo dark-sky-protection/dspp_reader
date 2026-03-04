@@ -150,7 +150,7 @@ class TESSW4C(object):
                             if last_test_of_connection is None or datetime.datetime.now(datetime.UTC) - last_test_of_connection > datetime.timedelta(minutes=connection_test_delay):
                                 last_test_of_connection = datetime.datetime.now(datetime.UTC)
                                 next_test_of_connection = last_test_of_connection + datetime.timedelta(minutes=connection_test_delay)
-                                logger.info(f"Testing connection to {self.device.type.upper()} {self.device.serial_id} at {self.device.ip}:{self.device.port}. Next test at {next_test_of_connection.strftime('%Y-%m-%d %H:%M:%S %Z')}")
+                                logger.info(f"Testing connection to {self.device.type.upper()} {self.device.serial_id} at {self.device.ip}:{self.device.port}. Next connection test at {next_test_of_connection.strftime('%Y-%m-%d %H:%M:%S %Z')}")
                                 with socket.create_connection((self.device.ip, self.device.port)) as sock:
                                     peer = sock.getpeername()
                                     logger.info(f"Successful connection test to {peer[0]}:{peer[1]}.")

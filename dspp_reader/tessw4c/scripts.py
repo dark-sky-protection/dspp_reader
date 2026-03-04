@@ -29,6 +29,7 @@ CONFIG_FIELDS_DEFAULT = {
     "api_endpoint": "http://localhost:8000/api/tess-w4c",
     "api_token": "<get-an-appropriate-api-token>",
     "file_format": 'tsv',
+    "save_logs_to": None,
 }
 
 def read_tessw4c(args=None):

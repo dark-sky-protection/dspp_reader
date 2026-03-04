@@ -38,7 +38,8 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
             config[field] = getattr(args, field)
     config["device_type"] = device_type
 
-    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"])
+    log_dir = config.get("save_logs_to", None)
+    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"], log_dir=log_dir)
     logger = logging.getLogger()
     logger.info(f"Starting {device_type.upper()} reader, Version: {__version__}")
 
@@ -50,6 +51,8 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
         logger.info(f"Use --help for more information. Pay attention to --config-file and --config-file-example")
         sys.exit(1)
     logger.info(f"Using the following configuration:\n\n\t{re.sub('\n', '\n\t', yaml.dump(config, sort_keys=False))}")
+
+    config.pop("save_logs_to", None)
 
     cls = reader_registry[device_type]
 

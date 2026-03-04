@@ -45,6 +45,7 @@ save_files_to: /path/to/where/to/save/the/data
 api_endpoint: http://<hostname>/api/tess-w4c
 api_token: <get-an-appropriate-api-token>
 file_format: tsv
+save_logs_to: logs
 ```
 
 For SQM-LE devices
@@ -73,4 +74,5 @@ save_files_to:  /path/to/where/to/save/the/data
 api_endpoint: http://<hostname>/api/sqm-le
 api_token: <get-an-appropriate-api-token>
 file_format: tsv
+save_logs_to: logs
 ```

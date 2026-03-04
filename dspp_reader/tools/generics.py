@@ -1,5 +1,6 @@
 import datetime
 import logging
+import os
 import time
 
 from astropy.units import Quantity
@@ -15,14 +16,22 @@ __version__ = version('dspp-reader')
 
 class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cover
     """Custom log filename handler with name rotation"""
-    def __init__(self, device_type, device_id, *args, **kwargs):
+    def __init__(self, device_type, device_id, log_dir=None, *args, **kwargs):
         self.device_type = device_type
         self.device_id = device_id
+        self.log_dir = log_dir
+
+        if self.log_dir:
+            os.makedirs(self.log_dir, exist_ok=True)
+            if 'filename' in kwargs:
+                kwargs['filename'] = os.path.join(self.log_dir, kwargs['filename'])
+
         super().__init__(*args, **kwargs)
 
     def rotation_filename(self, default_name):
         date_str = datetime.datetime.now().strftime('%Y%m%d')
-        return f"{date_str}_{self.device_type}_{self.device_id}.log"
+        filename = f"{date_str}_{self.device_type}_{self.device_id}.log"
+        return os.path.join(self.log_dir, filename) if self.log_dir else filename
 
 def clean_data(obj):
     """Recursively convert Quantities to plain numbers inside nested structures."""
@@ -51,13 +60,14 @@ def augment_data(data, timestamp, device=None):
             data['elevation'] = device.site.elevation
     return data
 
-def setup_logging(debug=False, device_type='photometer', device_id='0000'):
+def setup_logging(debug=False, device_type='photometer', device_id='0000', log_dir=None):
     """Setup logging
 
     Args:
         debug (bool, optional): Debug mode. Defaults to False.
         device_type (str, optional): Device type. Defaults to 'photometer'.
         device_id (str, optional): Device ID. Defaults to '0000'.
+        log_dir (str, optional): Log directory. Defaults to None.
 
     Returns:
         logging.Logger: Logging object
@@ -75,6 +85,7 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000'):
     file_handler = DeviceTimeRotatingFileHandler(
         device_type=device_type,
         device_id=device_id,
+        log_dir=log_dir,
         filename=f"{device_type}_{device_id}.log",
         when="D",
         interval=1,
@@ -142,6 +153,7 @@ def get_args(device_type, args=None): # pragma: no cover
     parser.add_argument('--api-token', action='store', dest='api_token', type=str, default=SUPPRESS, help='API Token')
     parser.add_argument('--file-format', action='store', dest='file_format', choices=['tsv', 'csv', 'txt'], default=SUPPRESS, help='File format to use')
     parser.add_argument('--config-file', action='store', dest='config_file', default=SUPPRESS, help="Configuration file full path")
+    parser.add_argument('--save-logs-to', action='store', dest='save_logs_to', default=SUPPRESS, help="Directory to save logs to")
     parser.add_argument('--config-file-example', action='store_true', dest='config_file_example', help="Print a configuration file example")
     parser.add_argument('--debug', action='store_true', dest='debug', default=False, help="Enable debug mode")
 
