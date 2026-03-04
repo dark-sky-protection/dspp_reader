@@ -153,7 +153,7 @@ class TESSW4C(object):
                                 logger.info(f"Testing connection to {self.device.type.upper()} {self.device.serial_id} at {self.device.ip}:{self.device.port}. Next test at {next_test_of_connection.strftime('%Y-%m-%d %H:%M:%S %Z')}")
                                 with socket.create_connection((self.device.ip, self.device.port)) as sock:
                                     peer = sock.getpeername()
-                                    logger.info(f"Successful connection test to to {peer[0]}:{peer[1]}.")
+                                    logger.info(f"Successful connection test to {peer[0]}:{peer[1]}.")
                             message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                             if self.logger_level == logging.DEBUG:
                                 logger.debug(message)
