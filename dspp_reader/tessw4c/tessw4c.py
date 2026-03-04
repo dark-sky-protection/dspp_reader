@@ -104,8 +104,6 @@ class TESSW4C(object):
         else:
             logger.error(f"Not enough information to define device")
 
-        self.tcp_socket = None
-
         if not self.device:
             logger.error(f"Please provide information to define a device.")
             logger.info(f"Use the argument  --help for more information")
@@ -150,10 +148,14 @@ class TESSW4C(object):
                                 logger.debug(message)
                             else:
                                 print(f"\r{message}", end="", flush=True)
+                            sleep(1)
                         except ConnectionRefusedError as e:
                             error_message = f"Socket error: {e}. The device may be unavailable."
                             logger.error(error_message)
                             sleep(5)
+                        except TimeoutError as e:
+                            logger.error(f"Socket timed out: {e}")
+                            continue
 
                         continue
                 else:
@@ -195,6 +197,8 @@ class TESSW4C(object):
                         continue
                     except JSONDecodeError as e:
                         logger.error(f"Error parsing data: {e}")
+                        if data:
+                            logger.error(f"Error parsing string: {data.decode('utf-8')}")
                         continue
                     except ConnectionRefusedError as e:
                         logger.error(f"Socket error: {e}")

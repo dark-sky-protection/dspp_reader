@@ -409,7 +409,8 @@ class SQMLE(object):
     def _post_to_api(self, data):
         cleaned_data = clean_data(data)
         reorganized_data = self.__organize_for_api(data=cleaned_data)
-        print(json.dumps(reorganized_data, indent=4))
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            print(json.dumps(reorganized_data, indent=4))
 
         max_failed_attempts = 5
         failed_attempts = 0
