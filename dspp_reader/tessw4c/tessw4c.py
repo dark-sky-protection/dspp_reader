@@ -279,19 +279,19 @@ class TESSW4C(object):
             "message_id": data['udp'],
             "timestamp": data['timestamp'],
             "localtime": data['localtime'],
-            "photometer_1": {
+            "channel_1": {
                 "frequency": data["F1"]['freq'],
                 "magnitude": data["F1"]['mag'],
                 "zeropoint": data["F1"]['zp']
-            }, "photometer_2": {
+            }, "channel_2": {
                 "frequency": data["F2"]['freq'],
                 "magnitude": data["F2"]['mag'],
                 "zeropoint": data["F2"]['zp']
-            }, "photometer_3": {
+            }, "channel_3": {
                 "frequency": data["F3"]['freq'],
                 "magnitude": data["F3"]['mag'],
                 "zeropoint": data["F3"]['zp']
-            }, "photometer_4": {
+            }, "channel_4": {
                 "frequency": data["F4"]['freq'],
                 "magnitude": data["F4"]['mag'],
                 "zeropoint": data["F4"]['zp']
