@@ -132,11 +132,14 @@ class TESSW4C(object):
                 logger.info(f"Using device type {self.device.type} Serial ID {self.device.serial_id} configured with Altitude {self.device.altitude} and Azimuth {self.device.azimuth}")
             last_message_id = None
             last_test_of_connection = None
+            show_next_sunset_message = True
             while True:
                 if self.device and self.device.site:
                     next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
                     if time_to_next_end > time_to_next_start and not self.read_always:
-                        logger.debug(f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                        if show_next_sunset_message:
+                            logger.info(f"Next Sunset (Sun at {self.sun_altitude} degrees from the horizon) is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
+                            show_next_sunset_message = False
                         hours = int(time_to_next_start.sec // 3600)
                         minutes = int((time_to_next_start.sec % 3600) // 60)
                         seconds = int(time_to_next_start.sec % 60)
@@ -161,6 +164,8 @@ class TESSW4C(object):
                             logger.error(f"Socket timed out: {e}")
                             sleep(5)
                         continue
+                    else:
+                        show_next_sunset_message = True
                 else:
                     logger.warning(f"No device has been defined, this program will continue reading continuously.")
 
