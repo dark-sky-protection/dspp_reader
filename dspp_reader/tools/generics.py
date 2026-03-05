@@ -20,18 +20,28 @@ class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cove
         self.device_type = device_type
         self.device_id = device_id
         self.save_logs_to = save_logs_to
+        self._current_date = datetime.datetime.now().strftime('%Y%m%d')
 
         if self.save_logs_to:
             os.makedirs(self.save_logs_to, exist_ok=True)
             if 'filename' in kwargs:
-                kwargs['filename'] = os.path.join(self.save_logs_to, kwargs['filename'])
+                kwargs['filename'] = os.path.join(self.save_logs_to, self._get_dated_filename())
 
         super().__init__(*args, **kwargs)
 
+    def _get_dated_filename(self):
+        return f"{self._current_date}_{self.device_type}_{self.device_id}.log"
+
     def rotation_filename(self, default_name):
-        date_str = datetime.datetime.now().strftime('%Y%m%d')
-        filename = f"{date_str}_{self.device_type}_{self.device_id}.log"
+        filename = self._get_dated_filename()
         return os.path.join(self.save_logs_to, filename) if self.save_logs_to else filename
+
+    def emit(self, record):
+        today = datetime.datetime.now().strftime('%Y%m%d')
+        if today != self._current_date:
+            self._current_date = today
+            self.doRollover()
+        super().emit(record)
 
 def clean_data(obj):
     """Recursively convert Quantities to plain numbers inside nested structures."""
