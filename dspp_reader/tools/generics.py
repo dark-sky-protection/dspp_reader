@@ -14,7 +14,7 @@ from pathlib import Path
 __version__ = version('dspp-reader')
 
 
-class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cover
+class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):  # pragma: no cover
     """Custom log filename handler with name rotation"""
     def __init__(self, device_type, device_id, save_logs_to=None, *args, **kwargs):
         self.device_type = device_type
@@ -43,6 +43,7 @@ class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cove
             self.doRollover()
         super().emit(record)
 
+
 def clean_data(obj):
     """Recursively convert Quantities to plain numbers inside nested structures."""
     if isinstance(obj, Quantity):
@@ -54,9 +55,10 @@ def clean_data(obj):
     else:
         return obj
 
+
 def augment_data(data, timestamp, device=None):
-    data['timestamp'] = timestamp.isoformat() # UT, buscar formato con menos decimales si no formatear a mano
-    data['localtime'] = timestamp.astimezone().isoformat() # Local Time with UT Offset
+    data['timestamp'] = timestamp.isoformat()  # UT, buscar formato con menos decimales si no formatear a mano
+    data['localtime'] = timestamp.astimezone().isoformat()  # Local Time with UT Offset
     if device:
         data['device'] = device.type
         data['serial_number'] = device.serial_id
@@ -69,6 +71,7 @@ def augment_data(data, timestamp, device=None):
             data['longitude'] = device.site.longitude
             data['elevation'] = device.site.elevation
     return data
+
 
 def setup_logging(debug=False, device_type='photometer', device_id='0000', save_logs_to=None):
     """Setup logging
@@ -83,7 +86,7 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000', save_
         logging.Logger: Logging object
     """
     logging_format = '[%(asctime)s][%(levelname).1s]: %(message)s'
-    logging_level =logging.INFO
+    logging_level = logging.INFO
     if debug:
         logging_format = '[%(asctime)s][%(levelname)8s]: %(message)s [%(module)s.%(funcName)s:%(lineno)d]'
         logging_level = logging.DEBUG
@@ -114,7 +117,7 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000', save_
     return logger
 
 
-def get_filename(save_files_to: Path, device_name:str, device_type: str, file_format:str) -> Path:
+def get_filename(save_files_to: Path, device_name: str, device_type: str, file_format: str) -> Path:
     """Get filename to save data to
 
     Args:
@@ -135,7 +138,8 @@ def get_filename(save_files_to: Path, device_name:str, device_type: str, file_fo
         date_string = now_local.strftime('%Y%m%d')
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
-def get_args(device_type, args=None): # pragma: no cover
+
+def get_args(device_type, args=None):  # pragma: no cover
     parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
     parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')

@@ -17,6 +17,7 @@ from dspp_reader.tools.generics import augment_data, get_filename, clean_data
 
 logger = logging.getLogger(__name__)
 
+
 class TESSW4C(object):
 
     def __init__(self,
@@ -35,9 +36,9 @@ class TESSW4C(object):
                  device_port: int = 23,
                  delay_between_reads: int = 30,
                  read_always: bool = False,
-                 save_to_file: bool=True,
-                 save_to_database: bool=False,
-                 post_to_api: bool=False,
+                 save_to_file: bool = True,
+                 save_to_database: bool = False,
+                 post_to_api: bool = False,
                  save_files_to: Path = os.getcwd(),
                  api_endpoint: str = '',
                  api_token: str = '',
@@ -84,7 +85,7 @@ class TESSW4C(object):
                 elevation=self.site_elevation,
                 timezone=self.site_timezone)
         else:
-            logger.error(f"Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
+            logger.error("Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
 
         self.device = None
         if all([self.device_type,
@@ -102,11 +103,11 @@ class TESSW4C(object):
                 ip=self.device_ip,
                 port=self.device_port)
         else:
-            logger.error(f"Not enough information to define device")
+            logger.error("Not enough information to define device")
 
         if not self.device:
-            logger.error(f"Please provide information to define a device.")
-            logger.info(f"Use the argument  --help for more information")
+            logger.error("Please provide information to define a device.")
+            logger.info("Use the argument  --help for more information")
             sys.exit(1)
 
         if self.save_to_file:
@@ -119,11 +120,10 @@ class TESSW4C(object):
                     sys.exit(1)
             logger.info(f"Data will be saved to {self.save_files_to}")
 
-
     def __call__(self):
         last_message_id = None
         last_test_of_connection = None
-        connection_test_delay = 30 # Minutes
+        connection_test_delay = 30  # Minutes
         show_next_sunset_message = True
 
         try:
@@ -131,7 +131,7 @@ class TESSW4C(object):
             if self.site:
                 logger.info(f"Using site {self.site.name} at {self.site.latitude} {self.site.longitude}")
             else:
-                logger.info(f"No site was defined or provided")
+                logger.info("No site was defined or provided")
             if self.device:
                 logger.info(f"Using device type {self.device.type} Serial ID {self.device.serial_id} configured with Altitude {self.device.altitude} and Azimuth {self.device.azimuth}")
 
@@ -171,7 +171,7 @@ class TESSW4C(object):
                     else:
                         show_next_sunset_message = True
                 else:
-                    logger.warning(f"No device has been defined, this program will continue reading continuously.")
+                    logger.warning("No device has been defined, this program will continue reading continuously.")
 
                 self.timestamp = datetime.datetime.now(datetime.UTC)
 
@@ -205,7 +205,7 @@ class TESSW4C(object):
                             logger.debug(f"Message id {message_id} skipped at {self.timestamp.strftime('%Y-%m-%d %H:%M:%S %Z')} because it has the same id as previous message ({last_message_id}).)")
                             continue
                     except TimeoutError:
-                        logger.error(f"Socket timed out")
+                        logger.error("Socket timed out")
                         continue
                     except JSONDecodeError as e:
                         logger.error(f"Error parsing data: {e}")
@@ -218,7 +218,6 @@ class TESSW4C(object):
 
         except KeyboardInterrupt:
             logger.info(f"{self.device_type.upper()} stopped by user")
-
 
     def __get_header(self, data, filename):
         columns = []
@@ -325,8 +324,6 @@ class TESSW4C(object):
                 }
             },
         }
-
-
 
 
 if __name__ == '__main__':

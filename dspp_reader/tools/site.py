@@ -6,6 +6,7 @@ from astropy.coordinates import EarthLocation
 from pytz import timezone as tz
 from astroplan import Observer
 
+
 class Site(object):
     def __init__(self, id, name, latitude, longitude, elevation, timezone,):
         self.id = id
@@ -21,7 +22,7 @@ class Site(object):
             timezone=tz(self.timezone),
             description=self.name)
 
-    def get_time_range(self, sun_altitude:float = -10):
+    def get_time_range(self, sun_altitude: float = -10):
         now = Time(datetime.datetime.now(datetime.UTC))
         # now = Time("2024-12-02 09:00:00")
         reference_time = now

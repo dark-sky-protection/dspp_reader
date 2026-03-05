@@ -32,6 +32,7 @@ CONFIG_FIELDS_DEFAULT = {
     "save_logs_to": None,
 }
 
+
 def read_tessw4c(args=None):
     read_device(device_type='tess-w4c',
                 config_fields_default=CONFIG_FIELDS_DEFAULT,

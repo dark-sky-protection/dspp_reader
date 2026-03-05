@@ -17,7 +17,8 @@ reader_registry = {
     "tess-w4c": TESSW4C
 }
 
-def read_device(device_type:str, config_fields_default: dict, args=None):
+
+def read_device(device_type: str, config_fields_default: dict, args=None):
     args = get_args(device_type=device_type, args=args)
 
     if args.config_file_example:
@@ -48,7 +49,7 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
         for field in invalid_fields:
             logger.error(f"Missing argument: --{re.sub('_', '-', field)}")
 
-        logger.info(f"Use --help for more information. Pay attention to --config-file and --config-file-example")
+        logger.info("Use --help for more information. Pay attention to --config-file and --config-file-example")
         sys.exit(1)
     logger.info(f"Using the following configuration:\n\n\t{re.sub('\n', '\n\t', yaml.dump(config, sort_keys=False))}")
 

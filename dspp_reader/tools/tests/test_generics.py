@@ -8,7 +8,7 @@ from unittest import TestCase
 from unittest.mock import patch, Mock
 
 from dspp_reader.tools import Device, Site
-from dspp_reader.tools.generics import augment_data, clean_data, get_args, get_filename
+from dspp_reader.tools.generics import augment_data, clean_data, get_filename
 
 
 class TestCleanData(TestCase):
@@ -20,7 +20,6 @@ class TestCleanData(TestCase):
 
         self.assertIsInstance(ten_meters, Quantity)
         self.assertEqual(cleaned_data, ten_meters.value)
-
 
     def test_dictionary(self):
         data = {
@@ -74,7 +73,6 @@ class TestAugmentData(TestCase):
         self.assertNotIn('latitude', augmented_data.keys())
         self.assertNotIn('longitude', augmented_data.keys())
         self.assertNotIn('elevation', augmented_data.keys())
-
 
     def test_with_device_and_site(self):
         site = Site(id='ctio', name='CTIO', latitude=-70, longitude=-30, elevation=2300, timezone='America/Santiago')

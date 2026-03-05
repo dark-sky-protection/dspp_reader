@@ -2,9 +2,18 @@ from typing import Union
 
 from dspp_reader.tools import Site
 
+
 class Device(object):
 
-    def __init__(self, serial_id: str, type: str, altitude: float, azimuth: float, site: Site,  window_correction:float = 0, ip: Union[str, None] = None, port: Union[int, None] = None):
+    def __init__(self,
+                 serial_id: str,
+                 type: str,
+                 altitude: float,
+                 azimuth: float,
+                 site: Site,
+                 window_correction: float = 0,
+                 ip: Union[str, None] = None,
+                 port: Union[int, None] = None):
         self.serial_id = str(serial_id)
         self.type = type
         self.altitude = altitude

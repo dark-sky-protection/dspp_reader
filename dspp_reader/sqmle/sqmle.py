@@ -37,17 +37,17 @@ class SQMLE(object):
                  site_longitude: str = '',
                  site_elevation: str = '',
                  sun_altitude: float = -10,
-                 device_type:str = 'sqm-le',
-                 device_id:str = None,
-                 device_altitude:float = None,
-                 device_azimuth:float = None,
-                 device_ip:str = None,
-                 device_port=10001,
-                 device_window_correction:float = 0,
-                 number_of_reads: int=3,
-                 reads_spacing: int=1,
-                 delay_between_reads=30,
-                 read_always:bool = False,
+                 device_type: str = 'sqm-le',
+                 device_id: str = None,
+                 device_altitude: float = None,
+                 device_azimuth: float = None,
+                 device_ip: str = None,
+                 device_port: int = 10001,
+                 device_window_correction: float = 0,
+                 number_of_reads: int = 3,
+                 reads_spacing: int = 1,
+                 delay_between_reads: int = 30,
+                 read_always: bool = False,
                  save_to_file=True,
                  save_to_database=False,
                  post_to_api=False,
@@ -101,7 +101,7 @@ class SQMLE(object):
                 elevation=self.site_elevation,
                 timezone=self.site_timezone)
         else:
-            logger.error(f"Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
+            logger.error("Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
 
         self.device = None
         if all([self.device_type,
@@ -163,12 +163,12 @@ class SQMLE(object):
 
                             continue
                     else:
-                        logger.warning(f"No device has been defined, this program will continue reading continuously.")
+                        logger.warning("No device has been defined, this program will continue reading continuously.")
 
                     data = self.get_data_point()
 
                     if not any([self.save_to_file, self.save_to_database, self.post_to_api]):
-                        logger.warning(f"Data will not be stored in any way...")
+                        logger.warning("Data will not be stored in any way...")
                         sleep(3)
 
                     if self.save_to_file:
@@ -186,7 +186,7 @@ class SQMLE(object):
                     print("")
                 else:
                     if not self.device:
-                        logger.error(f"A device is needed to be able to continue")
+                        logger.error("A device is needed to be able to continue")
         except KeyboardInterrupt:
             logger.info("SQM-LE stopped by user")
         except ConnectionRefusedError:
@@ -223,7 +223,6 @@ class SQMLE(object):
                 sleep(self.reads_spacing)
                 continue
 
-
         if len(measurements) == 1:
             data = measurements[0]
         elif len(measurements) > 1:
@@ -255,7 +254,6 @@ class SQMLE(object):
                 logger.error(f"Error decoding data: {e}")
                 sleep(1)
 
-
     def __apply_window_correction(self, data):
         data['magnitude'] = data['magnitude'] + self.device_window_correction * u.mag
         return data
@@ -269,11 +267,11 @@ class SQMLE(object):
                 raise ValueError(f"The command {command.decode().strip()} expects 6 values, but got {len(data)}")
             return {
                 'type': data[0],
-                'magnitude' : float(re.sub('m', '', data[1])) * u.mag,
-                'frequency' : float(re.sub('Hz', '', data[2])) * u.Hz,
-                'period_count' : int(re.sub('c', '', data[3])) * u.count,
-                'period_seconds' : float(re.sub('s', '', data[4])) * u.second,
-                'temperature' : float(re.sub('C', '', data[5])) * u.C,
+                'magnitude': float(re.sub('m', '', data[1])) * u.mag,
+                'frequency': float(re.sub('Hz', '', data[2])) * u.Hz,
+                'period_count': int(re.sub('c', '', data[3])) * u.count,
+                'period_seconds': float(re.sub('s', '', data[4])) * u.second,
+                'temperature': float(re.sub('C', '', data[5])) * u.C,
             }
         elif command == READ_WITH_SERIAL_NUMBER:
             if len(data) != 7:
@@ -290,12 +288,12 @@ class SQMLE(object):
 
             return {
                 'type': response_type,
-                'magnitude' : magnitude,
-                'frequency' : frequency,
-                'period_count' : period_count,
-                'period_seconds' : period_seconds,
-                'temperature' : temperature,
-                'serial_number' : serial_number,
+                'magnitude': magnitude,
+                'frequency': frequency,
+                'period_count': period_count,
+                'period_seconds': period_seconds,
+                'temperature': temperature,
+                'serial_number': serial_number,
             }
         elif command == REQUEST_CALIBRATION_INFORMATION:
             if len(data) != 6:
@@ -387,7 +385,6 @@ class SQMLE(object):
                 fields.append(str(data[key]))
         return f"{self.separator.join(fields)}\n"
 
-
     def _write_to_txt(self, data):
         filename = get_filename(
             save_files_to=self.save_files_to,
@@ -425,7 +422,7 @@ class SQMLE(object):
                     }
                 )
                 if response.status_code == 201:
-                    logger.info(f"Successfully created new entry in API")
+                    logger.info("Successfully created new entry in API")
                     return
                 else:
                     logger.error(f"Failed to create new entry in API, Status Code: {response.status_code}")
@@ -446,7 +443,7 @@ class SQMLE(object):
             'period_seconds': data['period_seconds'],
             'temperature': data['temperature'],
             'timestamp': data['timestamp'],
-            'device' : {
+            'device': {
                 'type': data['device'],
                 'serial_number': data['serial_number'],
                 'altitude': data['altitude'],
