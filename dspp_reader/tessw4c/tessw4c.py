@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 
 class TESSW4C(object):
-
+    """Class that implements the necessary code to read data from TESS-W4 devices."""
     def __init__(self,
                  site_id: str = '',
                  site_name: str = '',

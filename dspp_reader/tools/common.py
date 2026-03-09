@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from importlib.metadata import version
+from typing import Union
 
 import yaml
 
@@ -18,7 +19,16 @@ reader_registry = {
 }
 
 
-def read_device(device_type: str, config_fields_default: dict, args=None):
+def read_device(device_type: str, config_fields_default: dict, args: Union[None, list] = None):
+    """Helper function to read a device.
+
+    Handles `KeyboardInterrupt` and `NotImplementedError` to allow for a clean exit.
+
+    Args:
+        device_type (str): Type of the device for selecting different behaviour.
+        config_fields_default (dict): Dictionary of configuration fields to use.
+        args (Union[None, list]): Optional list of arguments to pass to argparse.
+    """
     args = get_args(device_type=device_type, args=args)
 
     if args.config_file_example:

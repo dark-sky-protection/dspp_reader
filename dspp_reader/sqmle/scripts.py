@@ -1,6 +1,7 @@
 import os
 
 from importlib.metadata import version
+from typing import Union
 
 from dspp_reader.tools.common import read_device
 
@@ -36,7 +37,15 @@ CONFIG_FIELDS_DEFAULT = {
 }
 
 
-def read_sqmle(args=None):
+def read_sqmle(args: Union[list, None] = None):
+    """Entry point for SQM-LE device.
+
+    This method wraps `read_device` with the specifications for SQM-LE device
+
+    Args:
+        args (list): Optional list of arguments to pass to argparse.
+
+    """
     read_device(device_type='sqm-le',
                 config_fields_default=CONFIG_FIELDS_DEFAULT,
                 args=args)

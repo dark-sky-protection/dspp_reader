@@ -34,6 +34,11 @@ CONFIG_FIELDS_DEFAULT = {
 
 
 def read_tessw4c(args=None):
+    """Entry point for TESS-W4C devices.
+
+    Args:
+        args (Namespace): Command line arguments
+    """
     read_device(device_type='tess-w4c',
                 config_fields_default=CONFIG_FIELDS_DEFAULT,
                 args=args)

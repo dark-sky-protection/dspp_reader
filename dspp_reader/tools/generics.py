@@ -2,9 +2,10 @@ import datetime
 import logging
 import os
 import time
+from typing import Union
 
 from astropy.units import Quantity
-from argparse import ArgumentParser, SUPPRESS
+from argparse import ArgumentParser, SUPPRESS, Namespace
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
 
@@ -13,10 +14,21 @@ from pathlib import Path
 
 __version__ = version('dspp-reader')
 
+from dspp_reader.tools import Device
+
 
 class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):  # pragma: no cover
-    """Custom log filename handler with name rotation"""
+    """Custom log filename handler with name rotation."""
     def __init__(self, device_type, device_id, save_logs_to=None, *args, **kwargs):
+        """
+
+        Args:
+            device_type (str): Type of device
+            device_id (str): ID or serial number of device
+            save_logs_to (Path, optional): Path to save logs. Defaults to None.:
+            *args:
+            **kwargs:
+        """
         self.device_type = device_type
         self.device_id = device_id
         self.save_logs_to = save_logs_to
@@ -56,7 +68,19 @@ def clean_data(obj):
         return obj
 
 
-def augment_data(data, timestamp, device=None):
+def augment_data(data, timestamp, device: Union[None, Device] = None):
+    """Appends data to payload.
+
+    This function will append timestamp, device and site information to payload.
+
+    Args:
+        data (dict): Data to append.
+        timestamp (datetime.datetime): Timestamp to append.
+        device (Device): Device instance to extract device and site information.
+
+    Returns:
+        dict: Augmented data.
+    """
     data['timestamp'] = timestamp.isoformat()  # UT, buscar formato con menos decimales si no formatear a mano
     data['localtime'] = timestamp.astimezone().isoformat()  # Local Time with UT Offset
     if device:
@@ -74,7 +98,7 @@ def augment_data(data, timestamp, device=None):
 
 
 def setup_logging(debug=False, device_type='photometer', device_id='0000', save_logs_to=None):
-    """Setup logging
+    """Setup logging format and file rotation.
 
     Args:
         debug (bool, optional): Debug mode. Defaults to False.
@@ -84,6 +108,7 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000', save_
 
     Returns:
         logging.Logger: Logging object
+
     """
     logging_format = '[%(asctime)s][%(levelname).1s]: %(message)s'
     logging_level = logging.INFO
@@ -118,16 +143,16 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000', save_
 
 
 def get_filename(save_files_to: Path, device_name: str, device_type: str, file_format: str) -> Path:
-    """Get filename to save data to
+    """Get filename to save data to.
 
     Args:
-        save_files_to: Path where to save data to
-        device_name: Device name
-        device_type: Device type
-        file_format: File format
+        save_files_to (Path): Path where to save data to
+        device_name (str): Device name
+        device_type (str): Device type
+        file_format (str): File format
 
     Returns:
-         Path with filename
+         Path: Path with filename
     """
     now_local = datetime.datetime.now().astimezone()
 
@@ -139,7 +164,16 @@ def get_filename(save_files_to: Path, device_name: str, device_type: str, file_f
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
 
-def get_args(device_type, args=None):  # pragma: no cover
+def get_args(device_type, args=None) -> Namespace:  # pragma: no cover
+    """Helper function to get device arguments from command line.
+
+    Args:
+        device_type (str): Device type to select appropriate arguments from.
+        args (list): List of arguments to pass to argparse.
+
+    Returns:
+        Namespace: Namespace containing command line arguments
+    """
     parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
     parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')
