@@ -177,7 +177,7 @@ class SQMLE(object):
                             seconds = int(time_to_next_start.sec % 60)
 
                             try:
-                                self.send_command(command=UNIT_INFORMATION_REQUEST)
+                                self._send_command(command=UNIT_INFORMATION_REQUEST)
                                 message = f"Waiting for {hours:02d} hours {minutes:02d} minutes {seconds:02d} seconds until next sunset {next_period_start.to_datetime(timezone=ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S')} {self.device.site.timezone} "
                                 if logger.getEffectiveLevel() == logging.DEBUG:
                                     logger.debug(message)
