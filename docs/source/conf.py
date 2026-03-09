@@ -39,6 +39,7 @@ apidoc_modules = [
         'destination': 'api',
         'exclude_patterns': ['_build', '**/test_*.py', '**/tests/*'],
         'separate_modules': True,
+        'private': True,
     }
 ]
 
