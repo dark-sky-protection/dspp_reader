@@ -20,10 +20,8 @@ CONFIG_FIELDS_DEFAULT = {
     "device_azimuth": 0,
     "device_ip": "0.0.0.0",
     "device_port": 32,
-    "use_udp": False,
-    "udp_bind_ip": "0.0.0.0",
-    "udp_port": 2255,
-    "read_all_the_time": False,
+    "delay_between_reads": 30,
+    "read_always": False,
     "save_to_file": True,
     "save_to_database": False,
     "post_to_api": False,
@@ -31,9 +29,16 @@ CONFIG_FIELDS_DEFAULT = {
     "api_endpoint": "http://localhost:8000/api/tess-w4c",
     "api_token": "<get-an-appropriate-api-token>",
     "file_format": 'tsv',
+    "save_logs_to": None,
 }
 
+
 def read_tessw4c(args=None):
+    """Entry point for TESS-W4C devices.
+
+    Args:
+        args (Namespace): Command line arguments
+    """
     read_device(device_type='tess-w4c',
                 config_fields_default=CONFIG_FIELDS_DEFAULT,
                 args=args)

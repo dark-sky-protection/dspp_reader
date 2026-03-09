@@ -1,8 +1,11 @@
 import datetime
 import logging
+import os
+import time
+from typing import Union
 
 from astropy.units import Quantity
-from argparse import ArgumentParser, SUPPRESS
+from argparse import ArgumentParser, SUPPRESS, Namespace
 from importlib.metadata import version
 from logging.handlers import TimedRotatingFileHandler
 
@@ -11,17 +14,47 @@ from pathlib import Path
 
 __version__ = version('dspp-reader')
 
+from dspp_reader.tools import Device
 
-class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler): # pragma: no cover
-    """Custom log filename handler with name rotation"""
-    def __init__(self, device_type, device_id, *args, **kwargs):
+
+class DeviceTimeRotatingFileHandler(TimedRotatingFileHandler):  # pragma: no cover
+    """Custom log filename handler with name rotation."""
+    def __init__(self, device_type, device_id, save_logs_to=None, *args, **kwargs):
+        """
+
+        Args:
+            device_type (str): Type of device
+            device_id (str): ID or serial number of device
+            save_logs_to (Path, optional): Path to save logs. Defaults to None.:
+            *args:
+            **kwargs:
+        """
         self.device_type = device_type
         self.device_id = device_id
+        self.save_logs_to = save_logs_to
+        self._current_date = datetime.datetime.now().strftime('%Y%m%d')
+
+        if self.save_logs_to:
+            os.makedirs(self.save_logs_to, exist_ok=True)
+            if 'filename' in kwargs:
+                kwargs['filename'] = os.path.join(self.save_logs_to, self._get_dated_filename())
+
         super().__init__(*args, **kwargs)
 
+    def _get_dated_filename(self):
+        return f"{self._current_date}_{self.device_type}_{self.device_id}.log"
+
     def rotation_filename(self, default_name):
-        date_str = datetime.datetime.now().strftime('%Y%m%d')
-        return f"{date_str}_{self.device_type}_{self.device_id}.log"
+        filename = self._get_dated_filename()
+        return os.path.join(self.save_logs_to, filename) if self.save_logs_to else filename
+
+    def emit(self, record):
+        today = datetime.datetime.now().strftime('%Y%m%d')
+        if today != self._current_date:
+            self._current_date = today
+            self.doRollover()
+        super().emit(record)
+
 
 def clean_data(obj):
     """Recursively convert Quantities to plain numbers inside nested structures."""
@@ -34,9 +67,22 @@ def clean_data(obj):
     else:
         return obj
 
-def augment_data(data, timestamp, device=None):
-    data['timestamp'] = timestamp.isoformat() # UT, buscar formato con menos decimales si no formatear a mano
-    data['localtime'] = timestamp.astimezone().isoformat() # Local Time with UT Offset
+
+def augment_data(data, timestamp, device: Union[None, Device] = None):
+    """Appends data to payload.
+
+    This function will append timestamp, device and site information to payload.
+
+    Args:
+        data (dict): Data to append.
+        timestamp (datetime.datetime): Timestamp to append.
+        device (Device): Device instance to extract device and site information.
+
+    Returns:
+        dict: Augmented data.
+    """
+    data['timestamp'] = timestamp.isoformat()  # UT, buscar formato con menos decimales si no formatear a mano
+    data['localtime'] = timestamp.astimezone().isoformat()  # Local Time with UT Offset
     if device:
         data['device'] = device.type
         data['serial_number'] = device.serial_id
@@ -50,29 +96,34 @@ def augment_data(data, timestamp, device=None):
             data['elevation'] = device.site.elevation
     return data
 
-def setup_logging(debug=False, device_type='photometer', device_id='0000'):
-    """Setup logging
+
+def setup_logging(debug=False, device_type='photometer', device_id='0000', save_logs_to=None):
+    """Setup logging format and file rotation.
 
     Args:
         debug (bool, optional): Debug mode. Defaults to False.
         device_type (str, optional): Device type. Defaults to 'photometer'.
         device_id (str, optional): Device ID. Defaults to '0000'.
+        save_logs_to (str, optional): Log directory. Defaults to None.
 
     Returns:
         logging.Logger: Logging object
+
     """
     logging_format = '[%(asctime)s][%(levelname).1s]: %(message)s'
-    logging_level =logging.INFO
+    logging_level = logging.INFO
     if debug:
         logging_format = '[%(asctime)s][%(levelname)8s]: %(message)s [%(module)s.%(funcName)s:%(lineno)d]'
         logging_level = logging.DEBUG
-    logging_datefmt = "%H:%M:%S"
+    logging_datefmt = "%Y-%m-%d %H:%M:%S UTC"
+    logging.Formatter.converter = time.gmtime
 
     logging.basicConfig(format=logging_format, level=logging_level, datefmt=logging_datefmt)
 
     file_handler = DeviceTimeRotatingFileHandler(
         device_type=device_type,
         device_id=device_id,
+        save_logs_to=save_logs_to,
         filename=f"{device_type}_{device_id}.log",
         when="D",
         interval=1,
@@ -81,7 +132,9 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000'):
         encoding='utf-8'
     )
     file_handler.setLevel(logging_level)
-    file_handler.setFormatter(logging.Formatter(logging_format))
+    formatter = logging.Formatter(logging_format, datefmt=logging_datefmt)
+    formatter.converter = time.gmtime
+    file_handler.setFormatter(formatter)
 
     logger = logging.getLogger()
     logger.addHandler(file_handler)
@@ -89,17 +142,17 @@ def setup_logging(debug=False, device_type='photometer', device_id='0000'):
     return logger
 
 
-def get_filename(save_files_to: Path, device_name:str, device_type: str, file_format:str) -> Path:
-    """Get filename to save data to
+def get_filename(save_files_to: Path, device_name: str, device_type: str, file_format: str) -> Path:
+    """Get filename to save data to.
 
     Args:
-        save_files_to: Path where to save data to
-        device_name: Device name
-        device_type: Device type
-        file_format: File format
+        save_files_to (Path): Path where to save data to
+        device_name (str): Device name
+        device_type (str): Device type
+        file_format (str): File format
 
     Returns:
-         Path with filename
+         Path: Path with filename
     """
     now_local = datetime.datetime.now().astimezone()
 
@@ -110,7 +163,17 @@ def get_filename(save_files_to: Path, device_name:str, device_type: str, file_fo
         date_string = now_local.strftime('%Y%m%d')
     return save_files_to / f"{date_string}_{device_type}_{device_name}.{file_format}"
 
-def get_args(device_type, args=None, has_upd=False): # pragma: no cover
+
+def get_args(device_type, args=None) -> Namespace:  # pragma: no cover
+    """Helper function to get device arguments from command line.
+
+    Args:
+        device_type (str): Device type to select appropriate arguments from.
+        args (list): List of arguments to pass to argparse.
+
+    Returns:
+        Namespace: Namespace containing command line arguments
+    """
     parser = ArgumentParser(description=f"{device_type.upper()} reader\nVersion: {__version__}")
 
     parser.add_argument('--site-id', action='store', dest='site_id', type=str, default=SUPPRESS, help='A conventional unique site id, for instance, `ctio`, `pachon` or `morado`')
@@ -125,15 +188,11 @@ def get_args(device_type, args=None, has_upd=False): # pragma: no cover
     parser.add_argument('--device-azimuth', action='store', dest='device_azimuth', type=float, default=SUPPRESS, help='Device azimuth')
     parser.add_argument('--device-ip', action='store', dest='device_ip', type=str, default=SUPPRESS, help='Device IP address')
     parser.add_argument('--device-port', action='store', dest='device_port', type=int, default=SUPPRESS, help='Device TCP port')
-    if has_upd:
-        parser.add_argument('--use-udp', action='store_true', dest='use_udp', default=False, help='Read device by subscribing to an UDP port')
-        parser.add_argument('--udp-bind-ip', action='store', dest='udp_bind_ip', type=str, default=SUPPRESS, help='IP address to bind to')
-        parser.add_argument('--udp-port', action='store', dest='udp_port', type=int, default=SUPPRESS,help="UDP port to listen on")
     if device_type in ['sqm-le']:
         parser.add_argument('--device-window-correction', action='store', dest='device_window_correction', type=float, default=SUPPRESS, help='If an SQM was mounted in housing with acrylic window the correction must be -0.11 mag')
         parser.add_argument('--number-of-reads', action='store', dest='number_of_reads', type=int, default=SUPPRESS, help='Number of reads to average')
-        parser.add_argument('--reads-frequency', action='store', dest='reads_frequency', type=int, default=SUPPRESS, help='How many seconds between reads')
-    parser.add_argument('--read-all-the-time', action='store_true', dest='read_all_the_time', default=False, help='Allows to ignore the time constraints')
+    parser.add_argument('--delay-between-reads', action='store', dest='delay_between_reads', type=int, default=SUPPRESS, help='How many seconds between reads')
+    parser.add_argument('--read-always', action='store_true', dest='read_always', default=False, help='Allows to ignore the time constraints')
     parser.add_argument('--save-to-file', action='store_true', dest='save_to_file', help="Save to a plain text file")
     parser.add_argument('--save-to-database', action='store_true', dest='save_to_database', help="Save to a database")
     parser.add_argument('--post-to-api', action='store_true', dest='post_to_api', help="Send data through a POST request to a REST API")
@@ -142,6 +201,7 @@ def get_args(device_type, args=None, has_upd=False): # pragma: no cover
     parser.add_argument('--api-token', action='store', dest='api_token', type=str, default=SUPPRESS, help='API Token')
     parser.add_argument('--file-format', action='store', dest='file_format', choices=['tsv', 'csv', 'txt'], default=SUPPRESS, help='File format to use')
     parser.add_argument('--config-file', action='store', dest='config_file', default=SUPPRESS, help="Configuration file full path")
+    parser.add_argument('--save-logs-to', action='store', dest='save_logs_to', default=SUPPRESS, help="Directory to save logs to")
     parser.add_argument('--config-file-example', action='store_true', dest='config_file_example', help="Print a configuration file example")
     parser.add_argument('--debug', action='store_true', dest='debug', default=False, help="Enable debug mode")
 

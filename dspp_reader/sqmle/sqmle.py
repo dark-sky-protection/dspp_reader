@@ -29,29 +29,58 @@ UNIT_INFORMATION_REQUEST = b'ix\r\n'
 
 
 class SQMLE(object):
+    """Class that implements the necessary code to read data from SQM-LE devices.
+
+    Args:
+        site_id (str): ID of the site, must be unique but is not enforced.
+        site_name (str): Long name of the site for human reference.
+        site_timezone (str): Timezone of the site. For example 'America/Santiago'.
+        site_latitude (float): Latitude of the site's location in degrees.
+        site_longitude (float): Longitude of the site's location in degrees.
+        site_elevation (int): Elevation of the site's location in meters above sea level.
+        sun_altitude (float): Location of the sun with respect to the site's horizon to start measuring.
+        device_type (str): Type of the device. Must be 'sqm-le'.
+        device_id (str): ID or serial number of the device for reading.
+        device_altitude (float): Altitude of the device for reading in degrees.
+        device_azimuth (float): Azimuth of the device for reading in degrees.
+        device_ip (str): IP address of the device for reading.
+        device_port (int): Port number of the device for reading.
+        device_window_correction (float): Additive correction of device. In magnitudes.
+        number_of_reads (int): How many reads to produce one datapoint.
+        reads_spacing (int): Spacing between reads in seconds.
+        delay_between_reads (int): Delay between reads in seconds.
+        read_always (bool): If true, always return reads.
+        save_to_file (bool): If true, save to plain text file.
+        save_to_database (bool): If true, save to database.
+        post_to_api (bool): If true, post to API.
+        save_files_to (Path): Directory where files are saved.
+        api_endpoint (str): Full URL of API endpoint where data is going to be posted.
+        api_token (str): API token for authentication.
+        file_format (str): File format for reading data. Default is 'tsv'.
+    """
     def __init__(self,
                  site_id: str = '',
                  site_name: str = '',
                  site_timezone: str = '',
-                 site_latitude: str = '',
-                 site_longitude: str = '',
-                 site_elevation: str = '',
-                 sun_altitude: float = -10,
-                 device_type:str = 'sqm-le',
-                 device_id:str = None,
-                 device_altitude:float = None,
-                 device_azimuth:float = None,
-                 device_ip:str = None,
-                 device_port=10001,
-                 device_window_correction:float = 0,
-                 number_of_reads=3,
-                 reads_spacing=5,
-                 reads_frequency=30,
-                 read_all_the_time:bool = False,
-                 save_to_file=True,
-                 save_to_database=False,
-                 post_to_api=False,
-                 save_files_to: Path = os.getcwd(),
+                 site_latitude: float = 0,
+                 site_longitude: float = 0,
+                 site_elevation: int = 0,
+                 sun_altitude: int = -10,
+                 device_type: str = 'sqm-le',
+                 device_id: str = None,
+                 device_altitude: float = None,
+                 device_azimuth: float = None,
+                 device_ip: str = None,
+                 device_port: int = 10001,
+                 device_window_correction: float = 0,
+                 number_of_reads: int = 3,
+                 reads_spacing: int = 1,
+                 delay_between_reads: int = 30,
+                 read_always: bool = False,
+                 save_to_file: bool = True,
+                 save_to_database: bool = False,
+                 post_to_api: bool = False,
+                 save_files_to: Path = '.',
                  api_endpoint: str = '',
                  api_token: str = '',
                  file_format: str = "tsv",):
@@ -72,8 +101,8 @@ class SQMLE(object):
 
         self.number_of_reads = number_of_reads
         self.reads_spacing = reads_spacing
-        self.reads_frequency = reads_frequency
-        self.read_all_the_time = read_all_the_time
+        self.delay_between_reads = delay_between_reads
+        self.read_always = read_always
         self.save_to_file = save_to_file
         self.save_to_database = save_to_database
         self.post_to_api = post_to_api
@@ -101,7 +130,7 @@ class SQMLE(object):
                 elevation=self.site_elevation,
                 timezone=self.site_timezone)
         else:
-            logger.error(f"Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
+            logger.error("Not enough site info provided: Please provide: site_id, site_name, site_timezone, site_latitude, site_longitude, site_elevation")
 
         self.device = None
         if all([self.device_type,
@@ -140,7 +169,7 @@ class SQMLE(object):
                 if self.device:
                     if self.device.site:
                         next_period_start, next_period_end, time_to_next_start, time_to_next_end = self.device.site.get_time_range(sun_altitude=self.sun_altitude)
-                        if time_to_next_end > time_to_next_start and not self.read_all_the_time:
+                        if time_to_next_end > time_to_next_start and not self.read_always:
                             logger.debug(
                                 f"Next Sunset is at {next_period_start.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)')}")
                             hours = int(time_to_next_start.sec // 3600)
@@ -163,12 +192,12 @@ class SQMLE(object):
 
                             continue
                     else:
-                        logger.warning(f"No device has been defined, this program will continue reading continuously.")
+                        logger.warning("No device has been defined, this program will continue reading continuously.")
 
                     data = self.get_data_point()
 
                     if not any([self.save_to_file, self.save_to_database, self.post_to_api]):
-                        logger.warning(f"Data will not be stored in any way...")
+                        logger.warning("Data will not be stored in any way...")
                         sleep(3)
 
                     if self.save_to_file:
@@ -180,19 +209,28 @@ class SQMLE(object):
 
                     last_datapoint = datetime.datetime.now(datetime.UTC)
                     logger.info(f"Last Datapoint recorded at {last_datapoint.strftime('%Y-%m-%d %H:%M:%S %Z')} or localtime {last_datapoint.astimezone(ZoneInfo(self.device.site.timezone)).strftime('%Y-%m-%d %H:%M:%S %Z')}.")
-                    for i in range(self.reads_frequency):
-                        print(f"\r\rNext read in {self.reads_frequency - i} seconds...", end="", flush=True)
+                    for i in range(self.delay_between_reads):
+                        print(f"\r\rNext read in {self.delay_between_reads - i} seconds...", end="", flush=True)
                         sleep(1)
                     print("")
                 else:
                     if not self.device:
-                        logger.error(f"A device is needed to be able to continue")
+                        logger.error("A device is needed to be able to continue")
         except KeyboardInterrupt:
             logger.info("SQM-LE stopped by user")
         except ConnectionRefusedError:
             logger.info("SQM-LE connection refused")
 
     def get_data_point(self):
+        """Handles SQM-LE reading.
+
+        This method encapsulates the entire process of reading an SQM-LE.
+
+        In particular, it sends the command `Rx` which will return the data and the serial number of the device.
+
+        Returns:
+            A dictionary with the data obtained from the SQM-LE device
+        """
         timestamp = datetime.datetime.now(datetime.UTC)
         data = {}
         measurements = []
@@ -223,7 +261,6 @@ class SQMLE(object):
                 sleep(self.reads_spacing)
                 continue
 
-
         if len(measurements) == 1:
             data = measurements[0]
         elif len(measurements) > 1:
@@ -233,7 +270,24 @@ class SQMLE(object):
 
         return augmented_data
 
-    def _send_command(self, command):
+    def _send_command(self, command: bytes):
+        r"""Helper method to send TCP/IP commands to the SQM-LE device.
+
+        The implemented commands are:
+
+        .. code-block:: python
+
+            READ = b'rx\\r\\n'
+            READ_WITH_SERIAL_NUMBER = b'Rx\\r\\n'
+            REQUEST_CALIBRATION_INFORMATION = b'cx\\r\\n'
+            UNIT_INFORMATION_REQUEST = b'ix\\r\\n'
+
+        Args:
+            command (bytes): The command to send.
+
+        Returns:
+            The response from the SQM-LE device as a string.
+        """
         while True:
             try:
                 logger.debug(f"Creating socket connection for {self.device.type} {self.device.serial_id}")
@@ -255,8 +309,15 @@ class SQMLE(object):
                 logger.error(f"Error decoding data: {e}")
                 sleep(1)
 
+    def __apply_window_correction(self, data: dict):
+        """Applies window correction to data.
 
-    def __apply_window_correction(self, data):
+        Args:
+            data (dict): The data to process.
+
+        Returns:
+            dict: The processed data with the window correction added to `magnitude`.
+        """
         data['magnitude'] = data['magnitude'] + self.device_window_correction * u.mag
         return data
 
@@ -269,11 +330,11 @@ class SQMLE(object):
                 raise ValueError(f"The command {command.decode().strip()} expects 6 values, but got {len(data)}")
             return {
                 'type': data[0],
-                'magnitude' : float(re.sub('m', '', data[1])) * u.mag,
-                'frequency' : float(re.sub('Hz', '', data[2])) * u.Hz,
-                'period_count' : int(re.sub('c', '', data[3])) * u.count,
-                'period_seconds' : float(re.sub('s', '', data[4])) * u.second,
-                'temperature' : float(re.sub('C', '', data[5])) * u.C,
+                'magnitude': float(re.sub('m', '', data[1])) * u.mag,
+                'frequency': float(re.sub('Hz', '', data[2])) * u.Hz,
+                'period_count': int(re.sub('c', '', data[3])) * u.count,
+                'period_seconds': float(re.sub('s', '', data[4])) * u.second,
+                'temperature': float(re.sub('C', '', data[5])) * u.C,
             }
         elif command == READ_WITH_SERIAL_NUMBER:
             if len(data) != 7:
@@ -290,12 +351,12 @@ class SQMLE(object):
 
             return {
                 'type': response_type,
-                'magnitude' : magnitude,
-                'frequency' : frequency,
-                'period_count' : period_count,
-                'period_seconds' : period_seconds,
-                'temperature' : temperature,
-                'serial_number' : serial_number,
+                'magnitude': magnitude,
+                'frequency': frequency,
+                'period_count': period_count,
+                'period_seconds': period_seconds,
+                'temperature': temperature,
+                'serial_number': serial_number,
             }
         elif command == REQUEST_CALIBRATION_INFORMATION:
             if len(data) != 6:
@@ -331,7 +392,6 @@ class SQMLE(object):
             raise NotImplementedError(f"Command {command.decode().strip()} does not support value averaging")
 
         df = pd.DataFrame(measurements)
-        print(df)
         response_type = df['type'].unique()
         if len(response_type) != 1:
             raise ValueError(
@@ -370,6 +430,7 @@ class SQMLE(object):
             raise ValueError(f"Unknown command: {command.decode().strip()}")
 
     def __get_header(self, data, filename):
+        """Create the header of the data file."""
         columns = []
         units = []
         for key in data.keys():
@@ -379,6 +440,16 @@ class SQMLE(object):
         return f"# Filename {filename}\n{''.join(units)}# {self.separator.join(columns)}\n"
 
     def __get_line_for_plain_text(self, data):
+        """Prepares data for plain text.
+
+        Removes units and flattens data into a single line for plain text.
+
+        Args:
+            data (dict): Data to prepare.
+
+        Returns:
+            str: Data as a single line for plain text.
+        """
         fields = []
         for key in data.keys():
             if isinstance(data[key], Quantity):
@@ -386,7 +457,6 @@ class SQMLE(object):
             else:
                 fields.append(str(data[key]))
         return f"{self.separator.join(fields)}\n"
-
 
     def _write_to_txt(self, data):
         filename = get_filename(
@@ -409,7 +479,8 @@ class SQMLE(object):
     def _post_to_api(self, data):
         cleaned_data = clean_data(data)
         reorganized_data = self.__organize_for_api(data=cleaned_data)
-        print(json.dumps(reorganized_data, indent=4))
+        if logger.getEffectiveLevel() == logging.DEBUG:
+            print(json.dumps(reorganized_data, indent=4))
 
         max_failed_attempts = 5
         failed_attempts = 0
@@ -424,7 +495,7 @@ class SQMLE(object):
                     }
                 )
                 if response.status_code == 201:
-                    logger.info(f"Successfully created new entry in API")
+                    logger.info("Successfully created new entry in API")
                     return
                 else:
                     logger.error(f"Failed to create new entry in API, Status Code: {response.status_code}")
@@ -445,7 +516,7 @@ class SQMLE(object):
             'period_seconds': data['period_seconds'],
             'temperature': data['temperature'],
             'timestamp': data['timestamp'],
-            'device' : {
+            'device': {
                 'type': data['device'],
                 'serial_number': data['serial_number'],
                 'altitude': data['altitude'],

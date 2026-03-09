@@ -3,6 +3,7 @@ import os
 import re
 import sys
 from importlib.metadata import version
+from typing import Union
 
 import yaml
 
@@ -17,7 +18,17 @@ reader_registry = {
     "tess-w4c": TESSW4C
 }
 
-def read_device(device_type:str, config_fields_default: dict, args=None):
+
+def read_device(device_type: str, config_fields_default: dict, args: Union[None, list] = None):
+    """Helper function to read a device.
+
+    Handles `KeyboardInterrupt` and `NotImplementedError` to allow for a clean exit.
+
+    Args:
+        device_type (str): Type of the device for selecting different behaviour.
+        config_fields_default (dict): Dictionary of configuration fields to use.
+        args (Union[None, list]): Optional list of arguments to pass to argparse.
+    """
     args = get_args(device_type=device_type, args=args)
 
     if args.config_file_example:
@@ -38,7 +49,8 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
             config[field] = getattr(args, field)
     config["device_type"] = device_type
 
-    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"])
+    save_logs_to = config.get("save_logs_to", None)
+    setup_logging(debug=args.debug, device_type=device_type, device_id=config["device_id"], save_logs_to=save_logs_to)
     logger = logging.getLogger()
     logger.info(f"Starting {device_type.upper()} reader, Version: {__version__}")
 
@@ -47,9 +59,11 @@ def read_device(device_type:str, config_fields_default: dict, args=None):
         for field in invalid_fields:
             logger.error(f"Missing argument: --{re.sub('_', '-', field)}")
 
-        logger.info(f"Use --help for more information. Pay attention to --config-file and --config-file-example")
+        logger.info("Use --help for more information. Pay attention to --config-file and --config-file-example")
         sys.exit(1)
     logger.info(f"Using the following configuration:\n\n\t{re.sub('\n', '\n\t', yaml.dump(config, sort_keys=False))}")
+
+    config.pop("save_logs_to", None)
 
     cls = reader_registry[device_type]
 

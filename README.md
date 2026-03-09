@@ -36,10 +36,8 @@ device_altitude: 45
 device_azimuth: 0
 device_ip: 0.0.0.0
 device_port: 32
-use_udp: false
-udp_bind_ip: 0.0.0.0
-udp_port: 2255
-read_all_the_time: false
+delay_between_reads: 30
+read_always: false
 save_to_file: true
 save_to_database: false
 post_to_api: false
@@ -47,6 +45,7 @@ save_files_to: /path/to/where/to/save/the/data
 api_endpoint: http://<hostname>/api/tess-w4c
 api_token: <get-an-appropriate-api-token>
 file_format: tsv
+save_logs_to: logs
 ```
 
 For SQM-LE devices
@@ -66,8 +65,8 @@ device_ip: 0.0.0.0
 device_port: 10001
 device_window_correction: -0.11
 number_of_reads: 5
-reads_frequency: 30
-read_all_the_time: false
+delay_between_reads: 30
+read_always: false
 save_to_file: true
 save_to_database: false
 post_to_api: false
@@ -75,4 +74,5 @@ save_files_to:  /path/to/where/to/save/the/data
 api_endpoint: http://<hostname>/api/sqm-le
 api_token: <get-an-appropriate-api-token>
 file_format: tsv
+save_logs_to: logs
 ```

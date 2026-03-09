@@ -5,7 +5,11 @@
 
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
+import os
+import sys
 from importlib.metadata import version, PackageNotFoundError
+
+sys.path.insert(0, os.path.abspath('../..'))
 
 try:
     __version__ = version('dspp_reader')
@@ -14,7 +18,7 @@ except PackageNotFoundError:
 
 version = '.'.join(__version__.split('.')[:2])
 release = __version__
-project = 'Dark Sky Protection Photometers Reader'
+project = 'DSPP Reader'
 copyright = '2025, NOIRLab'
 author = 'Simón Torres, Guillermo Damke'
 license = 'bsd3'
@@ -22,7 +26,23 @@ license = 'bsd3'
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
 
-extensions = []
+extensions = [
+    'sphinx.ext.apidoc',
+    'sphinx.ext.autodoc',
+    'sphinx.ext.viewcode',
+    'sphinx.ext.napoleon'
+]
+
+apidoc_modules = [
+    {
+        'path': '../../dspp_reader',
+        'destination': 'api',
+        'exclude_patterns': ['_build', '**/test_*.py', '**/tests/*'],
+        'separate_modules': True,
+        'private': True,
+    }
+]
+
 
 templates_path = ['_templates']
 exclude_patterns = []
