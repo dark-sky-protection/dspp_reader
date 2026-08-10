@@ -6,9 +6,29 @@
 DSPP Reader documentation
 =========================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
+The `Dark Skies Protection Project' Reader` is a python package for reading
+`SMQ-LE <https://unihedron.com/projects/sqm-le/>`_ and
+`TESS-W4C <https://tessskysensor.blogspot.com/2021/10/tess-w4c.html>`_ devices.
+
+Installation
+************
+
+The package *DSPP Reader* is hosted on the `Python Package Index <https://pypi.org/project/dspp-reader/>`_ so it can be installed using pip.
+
+.. code-block::
+
+    pip install dspp-reader
+
+
+
+Usage
+*****
+
+SQM-LE
+^^^^^^
+
+TESS-W4C
+^^^^^^^^
 
 
 .. toctree::
