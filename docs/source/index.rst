@@ -8,32 +8,23 @@ DSPP Reader documentation
 
 The `Dark Skies Protection Project' Reader` is a python package for reading
 `SMQ-LE <https://unihedron.com/projects/sqm-le/>`_ and
-`TESS-W4C <https://tessskysensor.blogspot.com/2021/10/tess-w4c.html>`_ devices.
+`TESS-W4C <https://tessskysensor.blogspot.com/2021/10/tess-w4c.html>`_ devices. It creates a TCP/IP connection to the
+device and polls the device for new data.
 
-Installation
-************
+.. figure:: _static/img/photometers.jpg
+    :alt: Photometers pointed at different locations in the sky.
 
-The package *DSPP Reader* is hosted on the `Python Package Index <https://pypi.org/project/dspp-reader/>`_ so it can be installed using pip.
-
-.. code-block::
-
-    pip install dspp-reader
-
-
-
-Usage
-*****
-
-SQM-LE
-^^^^^^
-
-TESS-W4C
-^^^^^^^^
+    SQM-LE and TESS-W4C installed in Cerro Morado, Chile.
 
 
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
+
+  install
+  usage
+  data_format
+  deployment
 
 
 Indices and Tables
