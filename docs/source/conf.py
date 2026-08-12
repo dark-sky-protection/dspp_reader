@@ -43,6 +43,8 @@ apidoc_modules = [
     }
 ]
 
+html_logo = '_static/img/logo_noirlab.png'
+
 
 templates_path = ['_templates']
 exclude_patterns = []
