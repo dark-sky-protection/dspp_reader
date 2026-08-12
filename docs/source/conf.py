@@ -43,6 +43,12 @@ apidoc_modules = [
     }
 ]
 
+html_theme_options = {
+    "navbar_start": [
+        "navbar-logo",
+        "version",
+    ],
+}
 html_logo = '_static/img/logo_noirlab.png'
 
 
