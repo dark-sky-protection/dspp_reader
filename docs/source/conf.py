@@ -16,7 +16,7 @@ try:
 except PackageNotFoundError:
     __version__ = '0.0.0'
 
-version = '.'.join(__version__.split('.')[:2])
+version = '.'.join(__version__.split('.')[:3])
 release = __version__
 project = 'DSPP Reader'
 copyright = '2025, NOIRLab'
