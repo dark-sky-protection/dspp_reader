@@ -1,13 +1,23 @@
 Data Format
 ***********
 
+We aimed to implement a simple and time-resistant format.
+
+.. note::
+
+    After only finding mentions about a standard for storing sky brightness data we came a across `this document that
+    describes a standard <https://darksky.org/app/uploads/bsk-pdf-manager/47_SKYGLOW_DEFINITIONS.PDF>`_ but we don't
+    comply to it since it was too late for our release.
+
 Files
 ^^^^^
+By default the data will be saved to files.
 
 SQM-LE
 ++++++
 
 .. code-block:: text
+    :caption: Slide sideways to see all the content.
 
     # Filename /full/path/to/data/20260310_sqmle_7281.tsv
     # magnitude: mag
@@ -25,7 +35,11 @@ SQM-LE
 TESS-W4C
 ++++++++
 
+Since TESS-W4C data contains nested dictionaries, in order to save it to a plain text file, it was necessary to
+*flatten* the data. i.e. express it in one line.
+
 .. code-block:: text
+    :caption: Slide sideways to see all the content.
 
     # File name: /full/path/to/data/20260602_tess-w4c_stars1567.tsv
     # udp	rev	name	wdBm	hash	ain	F1_freq	F1_mag	F1_zp	F2_freq	F2_mag	F2_zp	F3_freq	F3_mag	F3_zp	F4_freq	F4_mag	F4_zp	tamb	tsky	timestamp	localtime	device	serial_number	altitude	azimuth	site	timezone	latitude	longitude	elevation
@@ -34,6 +48,9 @@ TESS-W4C
 
 For API
 ^^^^^^^
+
+The API receives data in JSON format, below is an example of one payload for each type of instrument. In this case the API
+is a little bit more than an interface to the database.
 
 For SQM-LE
 ++++++++++
