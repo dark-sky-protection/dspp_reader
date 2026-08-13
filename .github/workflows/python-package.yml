@@ -40,10 +40,10 @@ jobs:
     steps:
     - uses: actions/checkout@v7
 
-    - name: Set up Python ${{ matrix.python-version }}
+    - name: Set up Python ${{ matrix.python }}
       uses: actions/setup-python@v7
       with:
-        python-version: ${{ matrix.python-version }}
+        python-version: ${{ matrix.python }}
 
     - name: Install tox
       run: |
@@ -52,7 +52,7 @@ jobs:
 
     - name: Run tox
       run: |
-        tox -e py${{ matrix.python-version }}-${{ matrix.tox-env }}
+        tox ${{ matrix.toxargs }} -e ${{ matrix.toxenv }} -- ${{ matrix.toxposargs }}
       env:
         # Set environment variable to indicate running in CI
         CI: true
