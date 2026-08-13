@@ -21,10 +21,19 @@ device and polls the device for new data.
    :maxdepth: 2
    :caption: Contents:
 
-  install
-  usage
-  data_format
-  deployment
+   install
+   usage
+   data_format
+   deployment
+
+API Reference
+=============
+
+.. toctree::
+   :maxdepth: 2
+
+   api/modules
+
 
 
 Indices and Tables

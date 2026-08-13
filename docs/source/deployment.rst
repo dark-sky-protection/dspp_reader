@@ -159,7 +159,7 @@ Save the following content on a file named ``Dockerfile``.
 Before creating the docker image we need to define a ``requirements.txt`` file which will be placed in the same folder
 as the ``Dockerfile``.
 
-.. code-block:: plaintext
+.. code-block:: text
 
     dspp-reader==1.0.0
 
