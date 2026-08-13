@@ -15,12 +15,27 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        python:
-          - version: "3.13"
-            tox: "313"
-          - version: "3.14"
-            tox: "314"
-        tox-env: ["test", "test-cov"]
+        include:
+          - name: Python 3.14 with Coverage
+            os: ubuntu-latest
+            python: '3.14'
+            toxenv: py314-test-cov
+
+          - name: Python 3.14
+            os: ubuntu-latest
+            python: '3.14'
+            toxenv: py314-test
+
+          - name: Python 3.13 with Coverage
+            os: ubuntu-latest
+            python: '3.13'
+            toxenv: py313-test-cov
+
+          - name: Python 3.13
+            os: ubuntu-latest
+            python: '3.13'
+            toxenv: py313-test
+
 
     steps:
     - uses: actions/checkout@v7
