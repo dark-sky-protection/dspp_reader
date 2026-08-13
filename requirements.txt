@@ -6,3 +6,4 @@ pandas
 pydata-sphinx-theme
 tzlocal
 pyyaml
+pytz

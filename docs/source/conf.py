@@ -39,9 +39,16 @@ apidoc_modules = [
         'destination': 'api',
         'exclude_patterns': ['_build', '**/test_*.py', '**/tests/*'],
         'separate_modules': True,
-        'private': True,
     }
 ]
+
+html_theme_options = {
+    "navbar_start": [
+        "navbar-logo",
+        "version",
+    ],
+}
+html_logo = '_static/img/logo_noirlab.png'
 
 
 templates_path = ['_templates']

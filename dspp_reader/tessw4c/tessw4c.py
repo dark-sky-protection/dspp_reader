@@ -256,6 +256,7 @@ class TESSW4C(object):
 
     def _write_to_database(self, data):
         print(data)
+        raise NotImplementedError
 
     def _post_to_api(self, data):
         data = clean_data(data)
