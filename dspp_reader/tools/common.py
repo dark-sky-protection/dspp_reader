@@ -25,7 +25,7 @@ def read_device(device_type: str, config_fields_default: dict, args: Union[None,
     Handles `KeyboardInterrupt` and `NotImplementedError` to allow for a clean exit.
 
     Args:
-        device_type (str): Type of the device for selecting different behaviour.
+        device_type (str): Type of the device for selecting different behavior.
         config_fields_default (dict): Dictionary of configuration fields to use.
         args (Union[None, list]): Optional list of arguments to pass to argparse.
     """

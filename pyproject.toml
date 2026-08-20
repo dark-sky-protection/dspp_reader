@@ -55,6 +55,14 @@ dependencies = [
     "tzlocal"
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-cov",
+    "freezegun",
+    "mock",
+]
+
 [project.urls]
 "Homepage" = "https://dspp-reader.readthedocs.io/en/latest/"
 "Bug Reports" = "https://github.com/dark-sky-protection/dspp_reader/issues"
