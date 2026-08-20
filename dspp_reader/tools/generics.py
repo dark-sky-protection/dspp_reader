@@ -97,7 +97,7 @@ def augment_data(data, timestamp, device: Union[None, Device] = None):
     return data
 
 
-def setup_logging(debug=False, device_type='photometer', device_id='0000', save_logs_to=None):
+def setup_logging(debug=False, device_type='photometer', device_id='0000', save_logs_to=None):  # pragma: no cover
     """Setup logging format and file rotation.
 
     Args:
