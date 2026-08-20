@@ -145,10 +145,10 @@ class SQMLE(object):
                 type=self.device_type,
                 altitude=self.device_altitude,
                 azimuth=self.device_azimuth,
-                window_correction=self.device_window_correction,
                 site=self.site,
                 ip=self.device_ip,
                 port=self.device_port,
+                window_correction=self.device_window_correction,
             )
         else:
             logger.error("Not enough information to define device")
