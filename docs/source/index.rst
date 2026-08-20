@@ -14,7 +14,7 @@ device and polls the device for new data.
 .. figure:: _static/img/photometers.jpg
     :alt: Photometers pointed at different locations in the sky.
 
-    SQM-LE and TESS-W4C installed in Cerro Morado, Chile.
+    SQM-LE and TESS-W4C installed on Cerro Morado, Chile.
 
 
 .. toctree::
