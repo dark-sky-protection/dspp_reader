@@ -6,7 +6,7 @@ from dspp_reader.tools.site import Site
 
 
 class TestSite(TestCase):
-    device_id = 'site'
+    site_id = 'site'
     name = 'My Site'
     latitude = -30.169166
     longitude = -70.804
@@ -14,7 +14,7 @@ class TestSite(TestCase):
     timezone = 'America/Santiago'
     sun_altitude = -10
 
-    site = Site(id=device_id,
+    site = Site(id=site_id,
                 name=name,
                 latitude=latitude,
                 longitude=longitude,
@@ -22,7 +22,7 @@ class TestSite(TestCase):
                 timezone=timezone)
 
     def test_site_attributes(self):
-        self.assertEqual(self.site.id, self.device_id)
+        self.assertEqual(self.site.id, self.site_id)
         self.assertEqual(self.site.name, self.name)
         self.assertAlmostEqual(self.site.latitude.value, self.latitude, places=3)
         self.assertAlmostEqual(self.site.longitude.value, self.longitude, places=3)
