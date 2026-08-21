@@ -8,6 +8,7 @@ from json import JSONDecodeError
 from time import sleep
 
 from pathlib import Path
+from requests.exceptions import ConnectionError
 from zoneinfo import ZoneInfo
 
 import requests
@@ -219,7 +220,7 @@ class TESSW4C(object):
         except KeyboardInterrupt:
             logger.info(f"{self.device_type.upper()} stopped by user")
 
-    def __get_header(self, data, filename):
+    def _get_header(self, data, filename):
         columns = []
         for key in data.keys():
             if key.startswith('F'):
@@ -229,7 +230,7 @@ class TESSW4C(object):
                 columns.append(key)
         return f"# File name: {filename}\n# {self.separator.join(columns)}\n"
 
-    def __get_line_for_plain_text(self, data):
+    def _get_line_for_plain_text(self, data):
         fields = []
         for key in data.keys():
             if key.startswith('F'):
@@ -246,10 +247,10 @@ class TESSW4C(object):
             device_type=data['type'] if 'type' in data else self.device_type,
             file_format=self.file_format)
         if not os.path.exists(filename):
-            header = self.__get_header(data=data, filename=filename)
+            header = self._get_header(data=data, filename=filename)
             with open(filename, 'w') as f:
                 f.write(header)
-        data_line = self.__get_line_for_plain_text(data)
+        data_line = self._get_line_for_plain_text(data)
         with open(filename, 'a') as f:
             f.write(data_line)
             logger.debug(f"{self.device_type.upper()} data written to {filename}")
@@ -260,7 +261,7 @@ class TESSW4C(object):
 
     def _post_to_api(self, data):
         data = clean_data(data)
-        organized_data = self.__organize_for_api(data=data)
+        organized_data = self._organize_for_api(data=data)
 
         max_failed_attempts = 5
         failed_attempts = 0
@@ -286,7 +287,7 @@ class TESSW4C(object):
                 failed_attempts += 1
                 sleep(1)
 
-    def __organize_for_api(self, data):
+    def _organize_for_api(self, data):
         return {
             "message_id": data['udp'],
             "timestamp": data['timestamp'],
@@ -325,7 +326,3 @@ class TESSW4C(object):
                 }
             },
         }
-
-
-if __name__ == '__main__':
-    pass
