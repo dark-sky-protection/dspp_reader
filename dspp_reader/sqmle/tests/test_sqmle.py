@@ -19,6 +19,15 @@ from dspp_reader.sqmle.sqmle import (
 from dspp_reader.tools.generics import clean_data
 
 
+def make_connection_mock(recv_return):
+    mock_socket = MagicMock()
+    mock_socket.recv.return_value = recv_return
+    mock_connection = MagicMock()
+    mock_connection.__enter__.return_value = mock_socket
+    mock_connection.__exit__.return_value = False
+    return mock_connection, mock_socket
+
+
 class TestSQMLE(TestCase):
 
     files_to_remove = []
@@ -78,8 +87,43 @@ class TestSQMLE(TestCase):
                 f.unlink()
 
 
-    def test_sqmle(self):
-        self.assertIsInstance(self.sqmle, SQMLE)
+    @patch('dspp_reader.sqmle.sqmle.sleep')
+    @patch('dspp_reader.sqmle.sqmle.socket.create_connection')
+    def test_send_command__success(self, mock_create_connection, mock_sleep):
+        mock_conn, mock_sock = make_connection_mock(b"12345")
+        mock_create_connection.return_value = mock_conn
+
+        result = self.sqmle._send_command(command=READ_WITH_SERIAL_NUMBER)
+        self.assertEqual(result, "12345")
+        mock_sock.sendall.assert_called_once_with(READ_WITH_SERIAL_NUMBER)
+        mock_create_connection.assert_called_once()
+        mock_sleep.assert_called_once_with(1)
+
+    @patch('dspp_reader.sqmle.sqmle.sleep')
+    @patch('dspp_reader.sqmle.sqmle.socket.create_connection')
+    def test_send_command__oserror_then_success(self, mock_create_connection, mock_sleep):
+        mock_conn, mock_sock = make_connection_mock(b"12345")
+        mock_create_connection.side_effect = [OSError("Connection refused"), mock_conn]
+
+        result = self.sqmle._send_command(command=READ_WITH_SERIAL_NUMBER)
+        self.assertEqual(result, "12345")
+        self.assertEqual(mock_create_connection.call_count, 2)
+        self.assertEqual(mock_sleep.call_count, 21)
+
+    @patch('dspp_reader.sqmle.sqmle.sleep')
+    @patch('dspp_reader.sqmle.sqmle.socket.create_connection')
+    def test_send_command__unicode_decode_error_then_success(self, mock_create_connection, mock_sleep):
+        bad_conn, bad_sock = make_connection_mock(b"\xff\xfe")
+        good_conn, good_sock = make_connection_mock(b"12345")
+        mock_create_connection.side_effect = [bad_conn, good_conn]
+
+        result = self.sqmle._send_command(command=READ_WITH_SERIAL_NUMBER)
+
+        self.assertEqual(result, "12345")
+        self.assertEqual(mock_create_connection.call_count, 2)
+        self.assertEqual(mock_sleep.call_count, 3)
+
+
 
     def test_write_to_database(self):
         self.assertRaises(NotImplementedError, self.sqmle._write_to_database, {})
