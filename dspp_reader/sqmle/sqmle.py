@@ -243,7 +243,7 @@ class SQMLE(object):
 
                 parsed_data = self._parse_data(data=data, command=READ_WITH_SERIAL_NUMBER)
 
-                corrected_data = self.__apply_window_correction(data=parsed_data)
+                corrected_data = self._apply_window_correction(data=parsed_data)
 
                 measurements.append(corrected_data)
                 if self.device.serial_id:
@@ -309,7 +309,7 @@ class SQMLE(object):
                 logger.error(f"Error decoding data: {e}")
                 sleep(1)
 
-    def __apply_window_correction(self, data: dict):
+    def _apply_window_correction(self, data: dict):
         """Applies window correction to data.
 
         Args:
@@ -361,19 +361,25 @@ class SQMLE(object):
         elif command == REQUEST_CALIBRATION_INFORMATION:
             if len(data) != 6:
                 raise ValueError(f"The command {command.decode().strip()} expects 6 values, but got {len(data)}")
+            response_type = data[0]
+            if response_type != 'c':
+                raise ValueError(f"Invalid response type {response_type}, the command {command.decode().strip()} expects c")
             return {
-                'type': data[0],
-                'magnitude_offset_calibration': float(data[1]),
-                'dark_period': float(data[2]),
-                'temperature_light_calibration': float(data[3]),
-                'magnitude_offset_manufacturer': float(data[4]),
-                'temperature_dark_calibration': float(data[5]),
+                'type': response_type,
+                'magnitude_offset_calibration': float(re.sub('m', '', data[1])) * u.mag,
+                'dark_period': float(re.sub('s', '', data[2])) * u.second,
+                'temperature_light_calibration': float(re.sub('C', '', data[3])) * u.C,
+                'magnitude_offset_manufacturer': float(re.sub('m', '', data[4])) * u.mag,
+                'temperature_dark_calibration': float(re.sub('C', '', data[5])) * u.C,
             }
         elif command == UNIT_INFORMATION_REQUEST:
             if len(data) != 5:
                 raise ValueError(f"The command {command.decode().strip()} expects 5 values, but got {len(data)}")
+            response_type = data[0]
+            if response_type != 'i':
+                raise ValueError(f"Invalid response type {response_type}, the command {command.decode().strip()} expects i")
             return {
-                'type': data[0],
+                'type': response_type,
                 'protocol_number': data[1],
                 'model_number': data[2],
                 'feature_number': data[3],
@@ -474,7 +480,7 @@ class SQMLE(object):
             logger.info(f"Data point written to {filename}")
 
     def _write_to_database(self, data):
-        pass
+        raise NotImplementedError
 
     def _post_to_api(self, data):
         cleaned_data = clean_data(data)
