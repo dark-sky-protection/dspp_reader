@@ -161,3 +161,102 @@ class TestSQMLE(TestCase):
         self.assertIsInstance(data, dict)
         self.assertEqual(len(data), 5)
         self.assertIsInstance(data['type'], str)
+
+    def test_average_data__no_data(self):
+        self.assertRaises(ValueError, self.sqmle._average_data, measurements=[], command=READ_WITH_SERIAL_NUMBER)
+
+    def test_average_data__command_unknown(self):
+        self.assertRaises(NotImplementedError, self.sqmle._average_data, measurements=[{}, {}], command=b'ls\r\n')
+
+    def test_average_data__command_READ(self):
+        measurements = [
+            {
+                'type': 'r',
+                'magnitude': 1 * u.mag,
+                'frequency': 100 * u.Hz,
+                'period_count': 5 * u.count,
+                'period_seconds': 10 * u.second,
+                'temperature': 20 * u.C,
+            },
+            {
+                'type': 'r',
+                'magnitude': 3 * u.mag,
+                'frequency': 300 * u.Hz,
+                'period_count': 7 * u.count,
+                'period_seconds': 20 * u.second,
+                'temperature': 22 * u.C,
+
+            }]
+        data = self.sqmle._average_data(measurements=measurements, command=READ)
+        self.assertIsInstance(data, dict)
+
+    def test_average_data__command_READ__multiple_data_type(self):
+        measurements = [
+            {
+                'type': 'r',
+                'magnitude': 1 * u.mag,
+                'frequency': 100 * u.Hz,
+                'period_count': 5 * u.count,
+                'period_seconds': 10 * u.second,
+                'temperature': 20 * u.C,
+            },
+            {
+                'type': 'c',
+                'magnitude': 3 * u.mag,
+                'frequency': 300 * u.Hz,
+                'period_count': 7 * u.count,
+                'period_seconds': 20 * u.second,
+                'temperature': 22 * u.C,
+
+            }]
+        self.assertRaises(ValueError, self.sqmle._average_data, measurements=measurements, command=READ)
+
+    def test_average_data__command_READ_WITH_SERIAL_NUMBER(self):
+        measurements = [{
+                'type': 'r',
+                'magnitude': 1 * u.mag,
+                'frequency': 100 * u.Hz,
+                'period_count': 5 * u.count,
+                'period_seconds': 10 * u.second,
+                'temperature': 20 * u.C,
+                'serial_number': '12345'
+            },
+            {
+                'type': 'r',
+                'magnitude': 3 * u.mag,
+                'frequency': 300 * u.Hz,
+                'period_count': 7 * u.count,
+                'period_seconds': 20 * u.second,
+                'temperature': 22 * u.C,
+                'serial_number': '12345'
+            }]
+        data = self.sqmle._average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
+        self.assertIsInstance(data, dict)
+
+    def test_average_data__command_READ_WITH_SERIAL_NUMBER__multiple_serial_number(self):
+        measurements = [{
+                'type': 'r',
+                'magnitude': 1 * u.mag,
+                'frequency': 100 * u.Hz,
+                'period_count': 5 * u.count,
+                'period_seconds': 10 * u.second,
+                'temperature': 20 * u.C,
+                'serial_number': '12345'
+            },
+            {
+                'type': 'r',
+                'magnitude': 3 * u.mag,
+                'frequency': 300 * u.Hz,
+                'period_count': 7 * u.count,
+                'period_seconds': 20 * u.second,
+                'temperature': 22 * u.C,
+                'serial_number': '54321'
+            }]
+        self.assertRaises(ValueError, self.sqmle._average_data, measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
+
+
+    def test_average_data__command_REQUEST_CALIBRATION_INFORMATION(self):
+        self.assertRaises(NotImplementedError, self.sqmle._average_data, measurements=[{}, {}], command=REQUEST_CALIBRATION_INFORMATION)
+
+    def test_average_data__command_UNIT_INFORMATION_REQUEST(self):
+        self.assertRaises(NotImplementedError, self.sqmle._average_data, measurements=[{}, {}], command=UNIT_INFORMATION_REQUEST)

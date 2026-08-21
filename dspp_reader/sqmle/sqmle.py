@@ -264,7 +264,7 @@ class SQMLE(object):
         if len(measurements) == 1:
             data = measurements[0]
         elif len(measurements) > 1:
-            data = self.__average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
+            data = self._average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
 
         augmented_data = augment_data(data=data, timestamp=timestamp, device=self.device)
 
@@ -389,7 +389,7 @@ class SQMLE(object):
             logger.error(f"Unknown command: {command.decode().strip()}")
             return data
 
-    def __average_data(self, measurements, command):
+    def _average_data(self, measurements, command):
         if len(measurements) == 0:
             raise ValueError("No data has been read")
         else:
