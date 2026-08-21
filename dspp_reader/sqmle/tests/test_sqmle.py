@@ -1,5 +1,10 @@
+import datetime
+import json
 import os
+from unittest.mock import patch, MagicMock
+
 import astropy.units as u
+import requests
 
 from freezegun import freeze_time
 from pathlib import Path
@@ -11,6 +16,7 @@ from dspp_reader.sqmle.sqmle import (
     READ_WITH_SERIAL_NUMBER,
     REQUEST_CALIBRATION_INFORMATION,
     UNIT_INFORMATION_REQUEST)
+from dspp_reader.tools.generics import clean_data
 
 
 class TestSQMLE(TestCase):
@@ -45,6 +51,26 @@ class TestSQMLE(TestCase):
             api_endpoint='http://localhost:8080/sqmle',
             api_token='',
             file_format='tsv')
+
+        self.data_for_api = {
+            'type': 'r',
+            'magnitude': 1 * u.mag,
+            'frequency': 100 * u.Hz,
+            'period_count': 5 * u.count,
+            'period_seconds': 10 * u.second,
+            'temperature': 20 * u.C,
+            'timestamp': datetime.datetime.now(datetime.UTC).isoformat(),
+            'device': self.sqmle.device_type,
+            'serial_number': self.sqmle.device_id,
+            'altitude': self.sqmle.device_altitude,
+            'azimuth': self.sqmle.device_azimuth,
+            'site': self.sqmle.site.id,
+            'latitude': self.sqmle.site.latitude,
+            'longitude': self.sqmle.site.longitude,
+            'elevation': self.sqmle.site.elevation,
+            'timezone': self.sqmle.site.timezone,
+        }
+
 
     def tearDown(self):
         for f in self.files_to_remove:
@@ -320,4 +346,51 @@ class TestSQMLE(TestCase):
 
         self.assertTrue(os.path.isfile(expected_filename))
         self.files_to_remove.append(expected_filename)
+
+    @patch('dspp_reader.sqmle.sqmle.sleep')
+    @patch('dspp_reader.sqmle.sqmle.requests.post')
+    def test_post_to_api__success(self, mock_post, mock_sleep):
+
+        mock_post.return_value = MagicMock(status_code=201)
+
+        self.sqmle._post_to_api(data=self.data_for_api)
+
+        mock_post.assert_called_once()
+        mock_sleep.assert_not_called()
+
+    @patch('dspp_reader.sqmle.sqmle.sleep')
+    @patch('dspp_reader.sqmle.sqmle.requests.post')
+    def test_post_to_api__error_status_code(self, mock_post, mock_sleep):
+
+        mock_post.return_value = MagicMock(status_code=500)
+
+        self.sqmle._post_to_api(data=self.data_for_api)
+
+        self.assertEqual(mock_post.call_count, 6)
+        self.assertEqual(mock_sleep.call_count, 6)
+
+    @patch('dspp_reader.sqmle.sqmle.sleep')
+    @patch('dspp_reader.sqmle.sqmle.requests.post')
+    def test_post_to_api__connection_error(self, mock_post, mock_sleep):
+
+        mock_post.side_effect = requests.exceptions.ConnectionError("error")
+
+        self.sqmle._post_to_api(data=self.data_for_api)
+
+        self.assertEqual(mock_post.call_count, 6)
+        self.assertEqual(mock_sleep.call_count, 6)
+
+
+
+    @freeze_time("2026-08-20 12:00:00", tz_offset=0)
+    def test_organize_for_api(self):
+        cleaned_data = clean_data(self.data_for_api)
+
+        organized_for_api = self.sqmle._organize_for_api(data=cleaned_data)
+        self.assertIsInstance(organized_for_api, dict)
+
+        try:
+            json.dumps(organized_for_api)
+        except (TypeError, ValueError) as e:
+            self.fail(f"The result is not JSON serializable: {e}")
 

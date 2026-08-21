@@ -484,8 +484,8 @@ class SQMLE(object):
 
     def _post_to_api(self, data):
         cleaned_data = clean_data(data)
-        reorganized_data = self.__organize_for_api(data=cleaned_data)
-        if logger.getEffectiveLevel() == logging.DEBUG:
+        reorganized_data = self._organize_for_api(data=cleaned_data)
+        if logger.getEffectiveLevel() == logging.DEBUG:  # pragma: no cover
             print(json.dumps(reorganized_data, indent=4))
 
         max_failed_attempts = 5
@@ -512,7 +512,7 @@ class SQMLE(object):
                 failed_attempts += 1
                 sleep(1)
 
-    def __organize_for_api(self, data):
+    def _organize_for_api(self, data):
 
         return {
             'type': data['type'],
