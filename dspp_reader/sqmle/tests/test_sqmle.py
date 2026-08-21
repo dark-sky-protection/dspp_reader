@@ -212,7 +212,8 @@ class TestSQMLE(TestCase):
         self.assertRaises(ValueError, self.sqmle._average_data, measurements=measurements, command=READ)
 
     def test_average_data__command_READ_WITH_SERIAL_NUMBER(self):
-        measurements = [{
+        measurements = [
+            {
                 'type': 'r',
                 'magnitude': 1 * u.mag,
                 'frequency': 100 * u.Hz,
@@ -234,7 +235,8 @@ class TestSQMLE(TestCase):
         self.assertIsInstance(data, dict)
 
     def test_average_data__command_READ_WITH_SERIAL_NUMBER__multiple_serial_number(self):
-        measurements = [{
+        measurements = [
+            {
                 'type': 'r',
                 'magnitude': 1 * u.mag,
                 'frequency': 100 * u.Hz,
@@ -260,3 +262,34 @@ class TestSQMLE(TestCase):
 
     def test_average_data__command_UNIT_INFORMATION_REQUEST(self):
         self.assertRaises(NotImplementedError, self.sqmle._average_data, measurements=[{}, {}], command=UNIT_INFORMATION_REQUEST)
+
+    def test_get_header(self):
+        filename = 'test_file.tsv'
+        data = {
+            'type': 'r',
+            'magnitude': 1 * u.mag,
+            'frequency': 100 * u.Hz,
+            'period_count': 5 * u.count,
+            'period_seconds': 10 * u.second,
+            'temperature': 20 * u.C,
+            'serial_number': '12345'
+        }
+        expected_header = "# Filename test_file.tsv\n# magnitude: mag\n# frequency: Hz\n# period_count: ct\n# period_seconds: s\n# temperature: C\n# type\tmagnitude\tfrequency\tperiod_count\tperiod_seconds\ttemperature\tserial_number\n"
+        header = self.sqmle._get_header(data=data, filename=filename)
+        self.assertIsInstance(header, str)
+        self.assertEqual(header, expected_header)
+
+    def test_get_line_for_plain_text(self):
+        data = {
+            'type': 'r',
+            'magnitude': 1 * u.mag,
+            'frequency': 100 * u.Hz,
+            'period_count': 5 * u.count,
+            'period_seconds': 10 * u.second,
+            'temperature': 20 * u.C,
+            'serial_number': '12345'
+        }
+        expected_line = "r\t1.0\t100.0\t5.0\t10.0\t20.0\t12345\n"
+        line = self.sqmle._get_line_for_plain_text(data=data)
+        self.assertIsInstance(line, str)
+        self.assertEqual(line, expected_line)

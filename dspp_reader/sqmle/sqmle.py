@@ -435,7 +435,7 @@ class SQMLE(object):
         else:
             raise ValueError(f"Unknown command: {command.decode().strip()}")
 
-    def __get_header(self, data, filename):
+    def _get_header(self, data, filename):
         """Create the header of the data file."""
         columns = []
         units = []
@@ -445,7 +445,7 @@ class SQMLE(object):
                 units.append(f"# {key}: {data[key].unit}\n")
         return f"# Filename {filename}\n{''.join(units)}# {self.separator.join(columns)}\n"
 
-    def __get_line_for_plain_text(self, data):
+    def _get_line_for_plain_text(self, data):
         """Prepares data for plain text.
 
         Removes units and flattens data into a single line for plain text.
@@ -471,10 +471,10 @@ class SQMLE(object):
             device_type='sqmle',
             file_format=self.file_format)
         if not os.path.exists(filename):
-            header = self.__get_header(data=data, filename=filename)
+            header = self._get_header(data=data, filename=filename)
             with open(filename, 'w') as f:
                 f.write(header)
-        data_line = self.__get_line_for_plain_text(data=data)
+        data_line = self._get_line_for_plain_text(data=data)
         with open(filename, "a") as f:
             f.write(data_line)
             logger.info(f"Data point written to {filename}")
