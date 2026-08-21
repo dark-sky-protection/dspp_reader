@@ -1,8 +1,8 @@
 import os
-from pathlib import Path
-
 import astropy.units as u
 
+from freezegun import freeze_time
+from pathlib import Path
 from unittest import TestCase
 
 from dspp_reader.sqmle.sqmle import SQMLE
@@ -14,6 +14,9 @@ from dspp_reader.sqmle.sqmle import (
 
 
 class TestSQMLE(TestCase):
+
+    files_to_remove = []
+
     def setUp(self):
         self.window_correction = -1
         self.sqmle = SQMLE(
@@ -42,6 +45,11 @@ class TestSQMLE(TestCase):
             api_endpoint='http://localhost:8080/sqmle',
             api_token='',
             file_format='tsv')
+
+    def tearDown(self):
+        for f in self.files_to_remove:
+            if f.exists():
+                f.unlink()
 
 
     def test_sqmle(self):
@@ -293,3 +301,23 @@ class TestSQMLE(TestCase):
         line = self.sqmle._get_line_for_plain_text(data=data)
         self.assertIsInstance(line, str)
         self.assertEqual(line, expected_line)
+
+    @freeze_time("2026-08-20 12:00:00", tz_offset=0)
+    def test_write_to_file(self):
+        data = {
+            'type': 'r',
+            'magnitude': 1 * u.mag,
+            'frequency': 100 * u.Hz,
+            'period_count': 5 * u.count,
+            'period_seconds': 10 * u.second,
+            'temperature': 20 * u.C,
+            'serial_number': '12345'
+        }
+
+        expected_filename = Path(os.getcwd()) / f"20260820_sqmle_{self.sqmle.device_id}.{self.sqmle.file_format}"
+
+        self.sqmle._write_to_txt(data=data)
+
+        self.assertTrue(os.path.isfile(expected_filename))
+        self.files_to_remove.append(expected_filename)
+
