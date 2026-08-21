@@ -145,10 +145,10 @@ class SQMLE(object):
                 type=self.device_type,
                 altitude=self.device_altitude,
                 azimuth=self.device_azimuth,
-                window_correction=self.device_window_correction,
                 site=self.site,
                 ip=self.device_ip,
                 port=self.device_port,
+                window_correction=self.device_window_correction,
             )
         else:
             logger.error("Not enough information to define device")
@@ -243,7 +243,7 @@ class SQMLE(object):
 
                 parsed_data = self._parse_data(data=data, command=READ_WITH_SERIAL_NUMBER)
 
-                corrected_data = self.__apply_window_correction(data=parsed_data)
+                corrected_data = self._apply_window_correction(data=parsed_data)
 
                 measurements.append(corrected_data)
                 if self.device.serial_id:
@@ -264,7 +264,7 @@ class SQMLE(object):
         if len(measurements) == 1:
             data = measurements[0]
         elif len(measurements) > 1:
-            data = self.__average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
+            data = self._average_data(measurements=measurements, command=READ_WITH_SERIAL_NUMBER)
 
         augmented_data = augment_data(data=data, timestamp=timestamp, device=self.device)
 
@@ -309,7 +309,7 @@ class SQMLE(object):
                 logger.error(f"Error decoding data: {e}")
                 sleep(1)
 
-    def __apply_window_correction(self, data: dict):
+    def _apply_window_correction(self, data: dict):
         """Applies window correction to data.
 
         Args:
@@ -361,19 +361,25 @@ class SQMLE(object):
         elif command == REQUEST_CALIBRATION_INFORMATION:
             if len(data) != 6:
                 raise ValueError(f"The command {command.decode().strip()} expects 6 values, but got {len(data)}")
+            response_type = data[0]
+            if response_type != 'c':
+                raise ValueError(f"Invalid response type {response_type}, the command {command.decode().strip()} expects c")
             return {
-                'type': data[0],
-                'magnitude_offset_calibration': float(data[1]),
-                'dark_period': float(data[2]),
-                'temperature_light_calibration': float(data[3]),
-                'magnitude_offset_manufacturer': float(data[4]),
-                'temperature_dark_calibration': float(data[5]),
+                'type': response_type,
+                'magnitude_offset_calibration': float(re.sub('m', '', data[1])) * u.mag,
+                'dark_period': float(re.sub('s', '', data[2])) * u.second,
+                'temperature_light_calibration': float(re.sub('C', '', data[3])) * u.C,
+                'magnitude_offset_manufacturer': float(re.sub('m', '', data[4])) * u.mag,
+                'temperature_dark_calibration': float(re.sub('C', '', data[5])) * u.C,
             }
         elif command == UNIT_INFORMATION_REQUEST:
             if len(data) != 5:
                 raise ValueError(f"The command {command.decode().strip()} expects 5 values, but got {len(data)}")
+            response_type = data[0]
+            if response_type != 'i':
+                raise ValueError(f"Invalid response type {response_type}, the command {command.decode().strip()} expects i")
             return {
-                'type': data[0],
+                'type': response_type,
                 'protocol_number': data[1],
                 'model_number': data[2],
                 'feature_number': data[3],
@@ -383,7 +389,7 @@ class SQMLE(object):
             logger.error(f"Unknown command: {command.decode().strip()}")
             return data
 
-    def __average_data(self, measurements, command):
+    def _average_data(self, measurements, command):
         if len(measurements) == 0:
             raise ValueError("No data has been read")
         else:
@@ -429,7 +435,7 @@ class SQMLE(object):
         else:
             raise ValueError(f"Unknown command: {command.decode().strip()}")
 
-    def __get_header(self, data, filename):
+    def _get_header(self, data, filename):
         """Create the header of the data file."""
         columns = []
         units = []
@@ -439,7 +445,7 @@ class SQMLE(object):
                 units.append(f"# {key}: {data[key].unit}\n")
         return f"# Filename {filename}\n{''.join(units)}# {self.separator.join(columns)}\n"
 
-    def __get_line_for_plain_text(self, data):
+    def _get_line_for_plain_text(self, data):
         """Prepares data for plain text.
 
         Removes units and flattens data into a single line for plain text.
@@ -465,21 +471,21 @@ class SQMLE(object):
             device_type='sqmle',
             file_format=self.file_format)
         if not os.path.exists(filename):
-            header = self.__get_header(data=data, filename=filename)
+            header = self._get_header(data=data, filename=filename)
             with open(filename, 'w') as f:
                 f.write(header)
-        data_line = self.__get_line_for_plain_text(data=data)
+        data_line = self._get_line_for_plain_text(data=data)
         with open(filename, "a") as f:
             f.write(data_line)
             logger.info(f"Data point written to {filename}")
 
     def _write_to_database(self, data):
-        pass
+        raise NotImplementedError
 
     def _post_to_api(self, data):
         cleaned_data = clean_data(data)
-        reorganized_data = self.__organize_for_api(data=cleaned_data)
-        if logger.getEffectiveLevel() == logging.DEBUG:
+        reorganized_data = self._organize_for_api(data=cleaned_data)
+        if logger.getEffectiveLevel() == logging.DEBUG:  # pragma: no cover
             print(json.dumps(reorganized_data, indent=4))
 
         max_failed_attempts = 5
@@ -506,7 +512,7 @@ class SQMLE(object):
                 failed_attempts += 1
                 sleep(1)
 
-    def __organize_for_api(self, data):
+    def _organize_for_api(self, data):
 
         return {
             'type': data['type'],

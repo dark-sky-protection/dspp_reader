@@ -6,6 +6,7 @@ dspp_reader/version.py
 /dspp_reader.egg-info/
 **/__pycache__/
 .idea/
+.DS_Store
 build/
 *.log
 .coverage
